@@ -19,11 +19,11 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
-        buildConfigField("String", "COLIBRIO_API_KEY",
-            getLocalProperty("COLIBRIO_API_KEY").toString()
+        buildConfigField("String", "READER_API_KEY",
+            getLocalProperty("READER_API_KEY").toString()
         )
-        buildConfigField("String", "COLIBRIO_API_SECRET",
-            getLocalProperty("COLIBRIO_API_SECRET").toString()
+        buildConfigField("String", "READER_API_SECRET",
+            getLocalProperty("READER_API_SECRET").toString()
         )
     }
 

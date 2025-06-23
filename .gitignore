@@ -81,3 +81,7 @@ oneapp/.idea/deploymentTargetSelector.xml
 
 # downloaded libraries
 /sdk/artifacts
+.idea/runConfigurations.xml
+.idea/migrations.xml
+.idea/deploymentTargetSelector.xml
+.idea/AndroidProjectSystem.xml

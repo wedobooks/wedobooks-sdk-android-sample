@@ -1,6 +1,5 @@
 package io.wedobooks.sdk.library.wedobookssdksampleapp.ui
 
-import android.widget.Spinner
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.size
@@ -9,10 +8,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -29,25 +25,10 @@ fun LoginScreen(
     val coroutineScope = rememberCoroutineScope()
     val isLoggedIn by vm.isLoggedIn.collectAsState(false)
     val isLoading by vm.isLoading
-    var textValue by rememberSaveable {
-        mutableStateOf("")
-    }
-
-    fun login() {
-        coroutineScope.launch {
-            vm.login(textValue)
-        }
-    }
 
     LaunchedEffect(isLoggedIn) {
         if (isLoggedIn) {
             goToMainScreen()
-        }
-    }
-
-    LaunchedEffect(true) {
-        coroutineScope.launch {
-            vm.login("T1UQWcQpABfHAHKMTsDEGeDD6IM2")
         }
     }
 
@@ -66,33 +47,13 @@ fun LoginScreen(
                     ),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-//            TextField(
-//                value = textValue,
-//                onValueChange = {
-//                    textValue = it
-//                },
-//                keyboardOptions = KeyboardOptions.Default.copy(
-//                    imeAction = ImeAction.Done
-//                ),
-//                keyboardActions = KeyboardActions(
-//                    onDone = {
-//                        login()
-//                    }
-//                ),
-//                placeholder = {
-//                    Text(
-//                        text = "input Id"
-//                    )
-//                }
-//            )
                 CustomButton(
                     title = "log in",
                     onClick = {
                         coroutineScope.launch {
-                            vm.login("T1UQWcQpABfHAHKMTsDEGeDD6IM2")
+                            vm.login("tF6EmXY0VEaKi4gMCILpZitZjYu2")
                         }
                     },
-//                    enabled = textValue.isNotBlank(),
                     color = Color.Black
                 )
             }

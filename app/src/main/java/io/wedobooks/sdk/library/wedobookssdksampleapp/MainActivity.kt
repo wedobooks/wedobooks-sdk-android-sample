@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBarsPadding
-import androidx.compose.foundation.layout.width
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -25,9 +24,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import androidx.navigation.compose.NavHost
@@ -37,7 +34,6 @@ import androidx.navigation.compose.rememberNavController
 import io.wedobooks.sdk.WeDoBooksSDK
 import io.wedobooks.sdk.library.wedobookssdksampleapp.ui.LoginScreen
 import io.wedobooks.sdk.library.wedobookssdksampleapp.ui.MainScreen
-import io.wedobooks.sdk.library.wedobookssdksampleapp.ui.theme.WeDoBooksSDKSampleAppTheme
 import io.wedobooks.sdk.models.ICheckoutBook
 import io.wedobooks.sdk.models.WeDoBooksConfiguration
 import io.wedobooks.sdk.models.WeDoBooksThemeColors
@@ -54,8 +50,8 @@ class MainActivity : ComponentActivity() {
                 firebaseApiKey = Constants.SDK_API_KEY,
                 firebaseProjectId = Constants.SDK_PROJECT_ID,
                 firebaseAppId = Constants.SDK_APP_ID,
-                readerApiKey = BuildConfig.COLIBRIO_API_KEY,
-                readerApiSecret = BuildConfig.COLIBRIO_API_SECRET
+                readerApiKey = BuildConfig.READER_API_KEY,
+                readerApiSecret = BuildConfig.READER_API_SECRET
             ),
             themeConfig = WeDoBooksThemeConfiguration
                 .builder()
@@ -114,7 +110,7 @@ class MainActivity : ComponentActivity() {
                                 isFinishButtonEnabled = false,
                                 onAudioMinimizeClick = null,
                                 viewModelStoreOwner = null,
-                                forceDarkMode = isDarkMode
+                                isDarkMode = isDarkMode
                             )
                         }
                     }
@@ -189,21 +185,5 @@ fun EasyAccess(
                 }
             }
         }
-    }
-}
-
-@Composable
-fun Greeting(name: String, modifier: Modifier = Modifier) {
-    Text(
-        text = "Hello $name!",
-        modifier = modifier
-    )
-}
-
-@Preview(showBackground = true)
-@Composable
-fun GreetingPreview() {
-    WeDoBooksSDKSampleAppTheme {
-        Greeting("Android")
     }
 }

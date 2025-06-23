@@ -91,14 +91,14 @@ fun MainScreen(
                     vm.stopAudio()
                 }
             )
-//            CustomButton(
-//                title = "Log out",
-//                color = MaterialTheme.colorScheme.primary,
-//                onClick = {
-//                    goToLogin()
-//                    vm.logout()
-//                }
-//            )
+            CustomButton(
+                title = "Log out",
+                color = MaterialTheme.colorScheme.primary,
+                onClick = {
+                    goToLogin()
+                    vm.logout()
+                }
+            )
             CustomButton(
                 title = "Reset downloads",
                 color = MaterialTheme.colorScheme.primary,
