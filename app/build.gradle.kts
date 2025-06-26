@@ -25,6 +25,9 @@ android {
         buildConfigField("String", "READER_API_SECRET",
             getLocalProperty("READER_API_SECRET").toString()
         )
+        buildConfigField("String", "DEMO_USER_ID",
+            getLocalProperty("DEMO_USER_ID").toString()
+        )
     }
 
     buildTypes {

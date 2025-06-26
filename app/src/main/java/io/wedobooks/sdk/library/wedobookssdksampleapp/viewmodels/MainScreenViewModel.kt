@@ -25,7 +25,7 @@ class MainScreenViewModel: ViewModel() {
     suspend fun getCheckout(bookType: BookType): CheckoutBook? {
         val isbn = when(bookType) {
             BookType.AudioBook -> "9780297395461"
-            BookType.EBook -> "9780994135094"
+            BookType.EBook -> "9780788638824"
         }
         val loader = when (bookType) {
             BookType.AudioBook ->  isAudioCheckoutLoading

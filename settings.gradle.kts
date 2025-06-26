@@ -19,8 +19,8 @@ dependencyResolutionManagement {
         maven {
             url = uri("https://wdb-android-maven-844218222632.europe-west3.run.app")
             credentials {
-                username = getLocalProperty("wdbuser")
-                password = getLocalProperty("wdbpw")
+                username = getLocalProperty("WDB_USER_NAME")
+                password = getLocalProperty("WDB_PASSWORD")
             }
         }
     }

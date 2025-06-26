@@ -19,7 +19,7 @@ class AuthService private constructor() {
         val instance = AuthService()
     }
     private val client = OkHttpClient()
-    val currentUser = WeDoBooksSDK.userOperations.profile
+    val currentUser = WeDoBooksSDK.userOperations.currentUserIdFlow
 
     suspend fun getToken(uid: String): String? {
         return withContext(Dispatchers.IO) {

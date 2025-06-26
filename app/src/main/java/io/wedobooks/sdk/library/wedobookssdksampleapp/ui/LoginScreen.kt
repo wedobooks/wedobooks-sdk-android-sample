@@ -15,6 +15,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import io.wedobooks.sdk.library.wedobookssdksampleapp.BuildConfig
 import io.wedobooks.sdk.library.wedobookssdksampleapp.viewmodels.LoginViewModel
 import kotlinx.coroutines.launch
 
@@ -52,7 +53,7 @@ fun LoginScreen(
                     title = "log in",
                     onClick = {
                         coroutineScope.launch {
-                            vm.login("")
+                            vm.login()
                         }
                     },
                     color = Color.Black
