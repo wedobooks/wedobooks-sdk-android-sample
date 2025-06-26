@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -36,7 +37,7 @@ fun LoginScreen(
         if (isLoading) {
             CircularProgressIndicator(
                 modifier = Modifier.size(44.dp).align(Alignment.Center),
-                color = Color.Blue,
+                color = MaterialTheme.colorScheme.primary,
                 strokeWidth = 4.dp
             )
         } else {
@@ -51,7 +52,7 @@ fun LoginScreen(
                     title = "log in",
                     onClick = {
                         coroutineScope.launch {
-                            vm.login("tF6EmXY0VEaKi4gMCILpZitZjYu2")
+                            vm.login("")
                         }
                     },
                     color = Color.Black

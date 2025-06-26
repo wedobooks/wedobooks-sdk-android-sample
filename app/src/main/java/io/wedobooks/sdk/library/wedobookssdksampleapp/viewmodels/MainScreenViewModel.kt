@@ -5,7 +5,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import io.wedobooks.sdk.WeDoBooksSDK
 import io.wedobooks.sdk.library.wedobookssdksampleapp.service.AuthService
-import io.wedobooks.sdk.models.ICheckoutBook
+import io.wedobooks.sdk.models.CheckoutBook
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.update
 
@@ -22,7 +22,7 @@ class MainScreenViewModel: ViewModel() {
     val isAudioCheckoutLoading = mutableStateOf(false)
     val didCheckoutFail = MutableStateFlow(false)
 
-    suspend fun getCheckout(bookType: BookType): ICheckoutBook? {
+    suspend fun getCheckout(bookType: BookType): CheckoutBook? {
         val isbn = when(bookType) {
             BookType.AudioBook -> "9780297395461"
             BookType.EBook -> "9780994135094"
@@ -33,7 +33,7 @@ class MainScreenViewModel: ViewModel() {
         }
         loader.value = true
         return try {
-            WeDoBooksSDK.books.getCheckout(isbn)
+            WeDoBooksSDK.bookOperations.getCheckout(isbn)
         } catch (e: Exception) {
             Log.d(TAG, "err: ${e.message}")
             didCheckoutFail.update { true }
@@ -44,7 +44,7 @@ class MainScreenViewModel: ViewModel() {
     }
 
     fun stopAudio() {
-        WeDoBooksSDK.books.stopAudioPlayer()
+        WeDoBooksSDK.bookOperations.stopAudioPlayer()
     }
 
     fun logout() {
@@ -52,6 +52,6 @@ class MainScreenViewModel: ViewModel() {
     }
 
     fun removeStorage() {
-        WeDoBooksSDK.storage.removeAll()
+        WeDoBooksSDK.storageOperations.removeAll()
     }
 }

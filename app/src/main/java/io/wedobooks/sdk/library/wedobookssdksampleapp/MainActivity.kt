@@ -1,17 +1,21 @@
 package io.wedobooks.sdk.library.wedobookssdksampleapp
 
 import android.os.Bundle
+import android.util.Log
 import android.view.ActionMode
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBarsPadding
+import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -24,7 +28,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import androidx.navigation.compose.NavHost
@@ -34,10 +41,11 @@ import androidx.navigation.compose.rememberNavController
 import io.wedobooks.sdk.WeDoBooksSDK
 import io.wedobooks.sdk.library.wedobookssdksampleapp.ui.LoginScreen
 import io.wedobooks.sdk.library.wedobookssdksampleapp.ui.MainScreen
-import io.wedobooks.sdk.models.ICheckoutBook
+import io.wedobooks.sdk.library.wedobookssdksampleapp.ui.theme.WeDoBooksSDKSampleAppTheme
+import io.wedobooks.sdk.models.CheckoutBook
 import io.wedobooks.sdk.models.WeDoBooksConfiguration
-import io.wedobooks.sdk.models.WeDoBooksThemeColors
 import io.wedobooks.sdk.models.WeDoBooksThemeConfiguration
+import kotlinx.coroutines.flow.distinctUntilChanged
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -60,17 +68,15 @@ class MainActivity : ComponentActivity() {
         setContent {
             val mainNavController = rememberNavController()
             var checkout by remember {
-                mutableStateOf<ICheckoutBook?>(null)
+                mutableStateOf<CheckoutBook?>(null)
             }
-            val profile by WeDoBooksSDK.user.profile.collectAsState(null)
             val isSystemDarkMode = isSystemInDarkTheme()
             var isDarkMode by remember {
                 mutableStateOf(isSystemDarkMode)
             }
-            MaterialTheme(
-                colorScheme = if (isDarkMode) {
-                    WeDoBooksThemeColors.DefaultDark.getColorsScheme()
-                } else WeDoBooksThemeColors.DefaultLight.getColorsScheme()
+
+            WeDoBooksSDKSampleAppTheme(
+                darkTheme = isDarkMode
             ) {
                 Box {
                     NavHost(
@@ -100,9 +106,9 @@ class MainActivity : ComponentActivity() {
                             )
                         }
                         composable(route = Routes.reader) {
-                            WeDoBooksSDK.books.getReader(
+                            WeDoBooksSDK.bookOperations.getReader(
                                 checkout = checkout,
-                                coverUrl = "https://images.qa.pubhub.dk/01/f5c95358-cad1-4edf-b14a-2d7a713195f0.jpg?457441",
+                                coverUrl = null,
                                 onCloseClick = {
                                     mainNavController.popBackStack()
                                 },
@@ -115,18 +121,19 @@ class MainActivity : ComponentActivity() {
                         }
                     }
 
-                    profile?.let {
-                        EasyAccess(
-                            modifier = Modifier
-                                .systemBarsPadding()
-                                .fillMaxWidth()
-                                .padding(horizontal = 40.dp)
-                                .height(60.dp)
-                                .align(Alignment.BottomCenter),
-                            navController = mainNavController,
-                            isDarkMode = isDarkMode
-                        )
-                    }
+                    EasyAccess(
+                        modifier = Modifier
+                            .systemBarsPadding()
+                            .fillMaxWidth()
+                            .padding(horizontal = 40.dp)
+                            .height(60.dp)
+                            .align(Alignment.BottomCenter),
+                        navController = mainNavController,
+                        onEasyAccessClick = {
+                            checkout = it
+                            mainNavController.navigate(Routes.reader)
+                        }
+                    )
                 }
             }
         }
@@ -134,13 +141,13 @@ class MainActivity : ComponentActivity() {
 
     override fun onActionModeStarted(mode: ActionMode?) {
         super.onActionModeStarted(mode)
-        WeDoBooksSDK.books.actionModeStarted(mode)
+        WeDoBooksSDK.bookOperations.actionModeStarted(mode)
 
     }
 
     override fun onActionModeFinished(mode: ActionMode?) {
         super.onActionModeFinished(mode)
-        WeDoBooksSDK.books.actionModeFinished(mode)
+        WeDoBooksSDK.bookOperations.actionModeFinished(mode)
     }
 }
 
@@ -148,39 +155,94 @@ class MainActivity : ComponentActivity() {
 fun EasyAccess(
     modifier: Modifier = Modifier,
     navController: NavController,
-    isDarkMode: Boolean,
+    onEasyAccessClick: (CheckoutBook) -> Unit,
 ) {
     val ctx = LocalContext.current.applicationContext
-    val easyAccessState by WeDoBooksSDK.easyAccess.lastOpenedBookFlow(ctx).collectAsState(null)
+    val easyAccessState by remember { WeDoBooksSDK.easyAccess.lastOpenedBookFlow(ctx) }.collectAsState(
+        null
+    )
+    val easyAccessAudioActive by WeDoBooksSDK.easyAccess.isPlayerActive.collectAsState(null to false)
+    val easyAccessIsPlayerPlaying by WeDoBooksSDK.easyAccess.isPlayerPlaying.collectAsState(false)
     val currentRoute = navController.currentBackStackEntryAsState()
 
     currentRoute.value?.destination?.route?.let {
         if (Routes.main == it) {
             easyAccessState?.checkout?.let { checkout ->
+                val (audioCheckout, audioIsActive) = easyAccessAudioActive
                 Surface(
                     modifier = modifier,
-                    color = MaterialTheme.colorScheme.surface,
-                    shadowElevation = 8.dp,
-                    tonalElevation = if (isDarkMode) 8.dp else 0.dp
+                    color = MaterialTheme.colorScheme.background,
+                    shadowElevation = 8.dp
                 ) {
-                    Box(Modifier.fillMaxSize()) {
-                        LinearProgressIndicator(
+                    if (checkout.id == audioCheckout?.id && audioIsActive) {
+                        Box(
                             modifier = Modifier
-                                .align(Alignment.BottomCenter)
-                                .height(4.dp)
-                                .fillMaxWidth(),
-                            trackColor = MaterialTheme.colorScheme.outline,
-                            color = MaterialTheme.colorScheme.primary,
-                            progress = {
-                                easyAccessState?.progress?.toFloat() ?: 0f
-                            }
-                        )
+                                .fillMaxSize()
+                                .clickable(
+                                    onClick = {
+                                        onEasyAccessClick(checkout)
+                                    },
+                                    role = Role.Button
+                                )
+                        ) {
+                            LinearProgressIndicator(
+                                modifier = Modifier
+                                    .align(Alignment.BottomCenter)
+                                    .height(4.dp)
+                                    .fillMaxWidth(),
+                                trackColor = MaterialTheme.colorScheme.outline,
+                                color = MaterialTheme.colorScheme.primary,
+                                progress = {
+                                    easyAccessState?.progress?.toFloat() ?: 0f
+                                }
+                            )
 
-                        Text(
-                            modifier = Modifier.align(Alignment.Center),
-                            text = checkout.title + "(${checkout.type.type})",
-                            color = MaterialTheme.colorScheme.primary
-                        )
+                            Text(
+                                modifier = Modifier
+                                    .align(Alignment.CenterStart)
+                                    .padding(start = 24.dp),
+                                text = checkout.title,
+                                color = MaterialTheme.colorScheme.onBackground
+                            )
+
+                            Icon(
+                                modifier = Modifier
+                                    .clickable(
+                                        onClick = {
+                                            WeDoBooksSDK.easyAccess.togglePlay()
+                                        }
+                                    )
+                                    .align(Alignment.CenterEnd)
+                                    .padding(end = 16.dp),
+                                painter = painterResource(
+                                    if (easyAccessIsPlayerPlaying) {
+                                        io.wedobooks.sdk.R.drawable.ic_pause
+                                    } else io.wedobooks.sdk.R.drawable.ic_play
+                                ),
+                                tint = MaterialTheme.colorScheme.primary,
+                                contentDescription = null
+                            )
+                        }
+                    } else {
+                        Box(Modifier.fillMaxSize()) {
+                            LinearProgressIndicator(
+                                modifier = Modifier
+                                    .align(Alignment.BottomCenter)
+                                    .height(4.dp)
+                                    .fillMaxWidth(),
+                                trackColor = MaterialTheme.colorScheme.outline,
+                                color = MaterialTheme.colorScheme.primary,
+                                progress = {
+                                    easyAccessState?.progress?.toFloat() ?: 0f
+                                }
+                            )
+
+                            Text(
+                                modifier = Modifier.align(Alignment.Center),
+                                text = checkout.title,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
                     }
                 }
             }

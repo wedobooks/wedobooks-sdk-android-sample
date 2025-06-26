@@ -25,15 +25,14 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import io.wedobooks.sdk.WeDoBooksSDK
 import io.wedobooks.sdk.library.wedobookssdksampleapp.viewmodels.BookType
 import io.wedobooks.sdk.library.wedobookssdksampleapp.viewmodels.MainScreenViewModel
-import io.wedobooks.sdk.models.ICheckoutBook
+import io.wedobooks.sdk.models.CheckoutBook
 import kotlinx.coroutines.launch
 
 @Composable
 fun MainScreen(
-    goToReader: (ICheckoutBook) -> Unit,
+    goToReader: (CheckoutBook) -> Unit,
     goToLogin: () -> Unit,
     toggleDarkMode: () -> Unit,
 ) {
@@ -103,7 +102,7 @@ fun MainScreen(
                 title = "Reset downloads",
                 color = MaterialTheme.colorScheme.primary,
                 onClick = {
-                    WeDoBooksSDK.storage.removeAll()
+                    vm.removeStorage()
                 }
             )
             CustomButton(

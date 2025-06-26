@@ -19,7 +19,7 @@ class AuthService private constructor() {
         val instance = AuthService()
     }
     private val client = OkHttpClient()
-    val currentUser = WeDoBooksSDK.user.profile
+    val currentUser = WeDoBooksSDK.userOperations.profile
 
     suspend fun getToken(uid: String): String? {
         return withContext(Dispatchers.IO) {
@@ -45,11 +45,11 @@ class AuthService private constructor() {
 
     suspend fun tokenLogin(token: String) {
         withContext(Dispatchers.IO) {
-            WeDoBooksSDK.user.signInWithToken(token)
+            WeDoBooksSDK.userOperations.signInWithToken(token)
         }
     }
 
     fun logout() {
-        WeDoBooksSDK.user.signOut()
+        WeDoBooksSDK.userOperations.signOut()
     }
 }
