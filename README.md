@@ -41,7 +41,7 @@ READER_API_SECRET="3wcfeq2"
 DEMO_USER_ID="gfralisdfjiw"
 ```
 
-These values are should be added and then afterwards do a gradle sync take note that READER_API_KEY, READER_API_SECRET and DEMO_USER_ID is first added when building
+These values are should be added and then afterwards do a gradle sync
 
 ### Manifest uses
 
