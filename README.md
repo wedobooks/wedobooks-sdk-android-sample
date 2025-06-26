@@ -74,6 +74,7 @@ Working with the SDK follows this outline:
 -   In order to do any book operations a user needs to be signed in. This can be checked by collecting the flow  `currentUserIdFlow` or just grab `currentUserId` in  `userOperations`  namespace property.
 -   If no user is signed in the sample app displays a login screen with just a login button, where it will log into the account specified in the [Local.properties](https://github.com/wedobooks/wedobooks-sdk-android-sample#localproperties) file
 -   After having signed in then you can checkout and open books through the  `bookOperations`  namespace property.
+-   For a custom Loading while waiting for the book pages to load use the `style` namespace with `setLoadingSVG` please note that you have to input the entire svg as a string so `<svg>...</svg>`
 
 ## Localization and Icon changes
 [](https://github.com/wedobooks/wedobooks-sdk-android-sample#localization-and-icon-changes)
