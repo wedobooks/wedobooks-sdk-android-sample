@@ -81,7 +81,8 @@ Working with the SDK follows this outline:
 When you want to change localization or some icons, then make use of the `images` or `localization` namespaces with either `localization.setEbookLocalization` or `images.changeAudioPlayerIcon`, these takes a paramater of `Map<Int, Int>` where the key is what you localization/image you want to change and the value is a resource `R.drawable.<something>` or `R.string.<something>`
 
 for ease of use Int Annotations such as `EbookStringKey`,  `AudioPlayerStringKey` can be used instead of doing guesswork
-for a small example 
+
+this is a small example 
 ```
 WeDoBooksSDK.images.changeAudioPlayerIcons(  
     mapOf<Int, Int>(  
