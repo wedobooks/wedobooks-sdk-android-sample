@@ -22,6 +22,7 @@ class MainScreenViewModel: ViewModel() {
     val isAudioCheckoutLoading = mutableStateOf(false)
     val didCheckoutFail = MutableStateFlow(false)
 
+    // ask WeDoBooks for isbns for different books
     suspend fun getCheckout(bookType: BookType): CheckoutBook? {
         val isbn = when(bookType) {
             BookType.AudioBook -> "9780297395461"

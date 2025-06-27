@@ -102,16 +102,17 @@ class MainActivity : ComponentActivity() {
                             )
                         }
                         composable(route = Routes.reader) {
+                            // you can set your own coverUrl else set to null if you want to use coverUrl provided by WeDoBooks
                             WeDoBooksSDK.bookOperations.getReader(
                                 checkout = checkout,
                                 coverUrl = null,
                                 onCloseClick = {
                                     mainNavController.popBackStack()
                                 },
-                                onFinishClick = {},
+                                onFinishClick = {}, // there is a button when you get to the end of the ebook
                                 isFinishButtonEnabled = false,
-                                onAudioMinimizeClick = null,
-                                viewModelStoreOwner = null,
+                                onAudioMinimizeClick = null, // different behavior for minimize else defaults to onCloseClick without stopping audio
+                                viewModelStoreOwner = null, // if you want to save state outside this composable
                                 isDarkMode = isDarkMode
                             )
                         }
@@ -154,6 +155,7 @@ fun EasyAccess(
     onEasyAccessClick: (CheckoutBook) -> Unit,
 ) {
     val ctx = LocalContext.current.applicationContext
+    // very important to use lastOpenedBookFlow like this or in a ViewModel you don't want it to infinitely recompose
     val easyAccessState by remember { WeDoBooksSDK.easyAccess.lastOpenedBookFlow(ctx) }.collectAsState(
         null
     )
