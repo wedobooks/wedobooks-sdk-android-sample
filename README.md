@@ -15,7 +15,7 @@ It primarily demonstrates how to sign in with a user, check out a book, and open
 [](https://github.com/wedobooks/wedobooks-sdk-android-sample#setup)
 
 - Access to the Maven server hosting the SDK, including a username and password  
-- A demo user ID for use with our demo backend  
+- A demo user ID for use with our demo backend and a custom url to get a token
 - Reader API credentials (key and secret)
 
 These values must be added to your [`local.properties`](https://github.com/wedobooks/wedobooks-sdk-android-sample#localproperties) file. See below for details
@@ -37,6 +37,7 @@ DEMO_USER_ID="<user-id>"
 FIREBASE_API_KEY="<firebase-api-key>"
 FIREBASE_APP_ID="<firebase-app-id>"
 FIREBASE_PROJECT_ID="<firebase-project-id>"
+CUSTOM_TOKEN_URL=<custom-url>
 ```
 
 Once you've added these values, sync the Gradle project.
