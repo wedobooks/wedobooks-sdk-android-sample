@@ -2,28 +2,31 @@
 
 [](https://github.com/wedobooks/wedobooks-sdk-android-sample#wedobooks-sdk-sample-app)
 
-Public sample app as inspiration for integrators.
+This is a public sample app intended to serve as inspiration for integrators.
 
-It mainly demonstrates how to sign in with user, checkout a book and open how to get the reader (do note it is designed for fullscreen but it is possible to use it in smaller windows). It's also possible to play around with theming, localization and a few other configurations of the UI.
+It primarily demonstrates how to sign in with a user, check out a book, and open it using the reader component. While the reader is designed for full-screen use, it can also be embedded in smaller views. You can also explore theming, localization, and various UI configuration options.
 
-This app requires a WeDoBooks SDK backend and other credentials to function properly. Get in touch to obtain access.
+> **Note:** This app requires access to the WeDoBooks SDK backend and additional credentials to function correctly. Contact us to request access.
+
+---
 
 ## Setup
 
 [](https://github.com/wedobooks/wedobooks-sdk-android-sample#setup)
 
-In order to get up and running you need the following (which will be delivered by WeDoBooks when requested):
+- Access to the Maven server hosting the SDK, including a username and password  
+- A demo user ID for use with our demo backend  
+- Reader API credentials (key and secret)
 
--   Access to the maven server that's delivering the SDK through a username and password .
--   A demo user id of a user in our demo backend.
--   Credentials to the reader component.
+These values must be added to your [`local.properties`](https://github.com/wedobooks/wedobooks-sdk-android-sample#localproperties) file. See below for details
 
-where these will be used can be found in the [Local.properties segment](https://github.com/wedobooks/wedobooks-sdk-android-sample#localproperties)
+---
+
 ### Local.properties
 
 [](https://github.com/wedobooks/wedobooks-sdk-android-sample#localproperties)
 
-The project expects these values in Local.properties:
+The project expects the following entries in your `local.properties` file:
 
 ```
 WDB_USER_NAME=<username>  
@@ -32,69 +35,94 @@ READER_API_KEY="<key>"
 READER_API_SECRET="<secret>"  
 DEMO_USER_ID="<user-id>"
 ```
-here is an example, this is by no means a working example
-```
-WDB_USER_NAME=wdbuser  
-WDB_PASSWORD=wdbpass 
-READER_API_KEY="erjt84443" 
-READER_API_SECRET="3wcfeq2"  
-DEMO_USER_ID="gfralisdfjiw"
-```
 
-These values are should be added and then afterwards do a gradle sync
+Once you've added these values, sync the Gradle project.
 
-### Manifest uses
+---
 
-[](https://github.com/wedobooks/wedobooks-sdk-android-sample#manifest-uses)
+### Android Manifest
 
-make sure to add this to your manifest
+[](https://github.com/wedobooks/wedobooks-sdk-android-sample#android-manifest)
 
-```
+Make sure to include the following permissions in your `AndroidManifest.xml`:
+
+```xml
 <uses-permission android:name="android.permission.INTERNET" />  
 <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />  
 <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />  
 <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
 ```
 
-## Backend to backend integration
+---
+
+## Backend-to-Backend Integration
 
 [](https://github.com/wedobooks/wedobooks-sdk-android-sample#backend-to-backend-integration)
 
-In order to sign a user in to the WeDoBooks SDK you need a so-called custom token. In a real app this would have to be obtained through a backend to backend integration and passed to the app. For demo purposes this app utilizes a demo backend endpoint in order to function without having the backend to backend integration setup. See  `LoginViewModel.login()`  for the call to the demo backend endpoint.
+Signing a user into the WeDoBooks SDK requires a custom token.  
+In a production setup, this token must be obtained through backend-to-backend integration and passed to the app.
 
-## Overview of the app
+For demo purposes, this app uses a demo backend endpoint to function without requiring backend integration.  
+Refer to `LoginViewModel.login()` for the demo call implementation.
+
+---
+
+## Overview of the App
 
 [](https://github.com/wedobooks/wedobooks-sdk-android-sample#overview-of-the-app)
 
-Working with the SDK follows this outline:
+Working with the SDK generally follows this pattern:
 
--   The WeDoBooksFacade singleton is the gateway to all the SDK functionality and can be accessed like this  `WeDoBooksSDK`
--   Before doing anything else with the SDK you must call the  `setup`  method on the WeDoBooksSDK singleton instance. This should only be called once and will throw an error if it's called more than once. For the setup you can make use of `WeDoBooksThemeConfiguration.builder().build()` for the `themeConfig` property, for a standard theme or you can set values as you want it.
--   All other functionality in the SDK is grouped in namespaces which can be accessed through properties on the WeDoBooksFacade instance. At the time of writing these namespaces exist:  `bookOperations`,  `storageOperations`,  `localization`,  `styling`  and  `userOperations`, `images`, `easyAccess`.
--   In order to do any book operations a user needs to be signed in. This can be checked by collecting the flow  `currentUserIdFlow` or just grab `currentUserId` in  `userOperations`  namespace property.
--   If no user is signed in the sample app displays a login screen with just a login button, where it will log into the account specified in the [Local.properties](https://github.com/wedobooks/wedobooks-sdk-android-sample#localproperties) file
--   After having signed in then you can checkout and open books through the  `bookOperations`  namespace property.
--   For a custom Loading while waiting for the book pages to load use the `style` namespace with `setLoadingSVG` please note that you have to input the entire svg as a string so `<svg>...</svg>`
+- The WeDoBooksFacade singleton is the gateway to all the SDK functionality and can be accessed like this  `WeDoBooksSDK`
 
-## Localization and Icon changes
-[](https://github.com/wedobooks/wedobooks-sdk-android-sample#localization-and-icon-changes)
+- Before using any SDK features, call the `setup()` method on the singleton.  
+  This must only be called once. Repeated calls will result in an error.  
+  You can use `WeDoBooksThemeConfiguration.builder().build()` to create a default theme configuration, or customize it as needed.
 
-When you want to change localization or some icons, then make use of the `images` or `localization` namespaces with either `localization.setEbookLocalization` or `images.changeAudioPlayerIcon`, these takes a paramater of `Map<Int, Int>` where the key is what you localization/image you want to change and the value is a resource `R.drawable.<something>` or `R.string.<something>`
+- SDK functionality is grouped into namespaces, accessible through properties on the `WeDoBooksSDK` singleton.  
+  Current namespaces include:  
+  `bookOperations`, `storageOperations`, `userOperations`, `localization`, `styling`, `images`, and `easyAccess`.
 
-for ease of use Int Annotations such as `EbookStringKey`,  `AudioPlayerStringKey` can be used instead of doing guesswork
+- A user must be signed in to perform book operations.  
+  This can be checked using `userOperations.currentUserId`, or by observing the `currentUserIdFlow`.
 
-this is a small example 
-```
-WeDoBooksSDK.images.changeAudioPlayerIcons(  
-    mapOf<Int, Int>(  
+- If no user is signed in, the sample app presents a login screen.  
+  Tapping the login button will log in with the demo user ID specified in [`local.properties`](https://github.com/wedobooks/wedobooks-sdk-android-sample#localproperties).
+
+- Once signed in, books can be checked out and opened via the `bookOperations` namespace.
+
+- To show a custom loading screen while pages load, use `styling.setLoadingSVG()` with the entire SVG string as input:  
+  ```kotlin
+  WeDoBooksSDK.styling.setLoadingSVG("<svg>...</svg>")
+  ```
+
+---
+
+## Localization and Icon Customization
+[](https://github.com/wedobooks/wedobooks-sdk-android-sample#localization-and-icon-customization)
+
+To customize localization strings or player icons, use the `localization` and `images` namespaces.
+
+Use the `setEbookLocalization()` and `changeAudioPlayerIcons()` methods, which both accept a `Map<Int, Int>`.  
+The keys represent specific localizable strings or icon identifiers, and the values are resource references (e.g., `R.string.*`, `R.drawable.*`).
+
+Annotations such as `EbookStringKey` and `AudioPlayerIconKey` are available to improve type safety.
+
+Example:
+
+```kotlin
+WeDoBooksSDK.images.changeAudioPlayerIcons(
+    mapOf(
         AudioPlayerIconKey.PLAY to R.drawable.ic_play,
-        AudioPlayerIconKey.PAUSE to R.drawable.ic_pause,
-    )  
+        AudioPlayerIconKey.PAUSE to R.drawable.ic_pause
+    )
 )
 
-WeDoBooksSDK.localization.setEbookLocalization(  
-    mapOf<Int, Int>(  
-        EbookStringKey.BUTTONS_CANCEL to R.string.general_cancel  
-    )  
+WeDoBooksSDK.localization.setEbookLocalization(
+    mapOf(
+        EbookStringKey.BUTTONS_CANCEL to R.string.general_cancel
+    )
 )
 ```
+
+---
