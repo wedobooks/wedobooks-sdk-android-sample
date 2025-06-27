@@ -2,6 +2,7 @@ package io.wedobooks.sdk.library.wedobookssdksampleapp.service
 
 import android.util.Log
 import io.wedobooks.sdk.WeDoBooksSDK
+import io.wedobooks.sdk.library.wedobookssdksampleapp.BuildConfig
 import io.wedobooks.sdk.library.wedobookssdksampleapp.util.await
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -30,14 +31,14 @@ class AuthService private constructor() {
             val body = jsonBody.toString().toRequestBody(mediaType)
 
             val request = Request.Builder()
-                .url("https://europe-west3-wedobooks-sdk.cloudfunctions.net/Sdk-Demo-get_auth_token")
+                .url(BuildConfig.CUSTOM_TOKEN_URL)
                 .post(body)
                 .addHeader("Content-Length", "${body.contentLength()}")
                 .addHeader("Connection", "close")
                 .build()
             client.newCall(request).await().body?.string()?.let {
-                val jsonResponse = JSONObject(it)
                 Log.d(TAG, it)
+                val jsonResponse = JSONObject(it)
                 jsonResponse.getString("token")
             }
         }

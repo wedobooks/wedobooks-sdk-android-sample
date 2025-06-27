@@ -28,6 +28,17 @@ android {
         buildConfigField("String", "DEMO_USER_ID",
             getLocalProperty("DEMO_USER_ID").toString()
         )
+        buildConfigField("String", "FIREBASE_API_KEY",
+            getLocalProperty("FIREBASE_API_KEY").toString()
+        )
+        buildConfigField("String", "FIREBASE_APP_ID",
+            getLocalProperty("FIREBASE_APP_ID").toString()
+        )
+        buildConfigField("String", "FIREBASE_PROJECT_ID",
+            getLocalProperty("FIREBASE_PROJECT_ID").toString()
+        )
+        buildConfigField("String", "CUSTOM_TOKEN_URL",
+            getLocalProperty("CUSTOM_TOKEN_URL").toString())
     }
 
     buildTypes {
