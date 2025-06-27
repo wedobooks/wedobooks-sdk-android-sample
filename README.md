@@ -81,7 +81,7 @@ Working with the SDK generally follows this pattern:
 
 - SDK functionality is grouped into namespaces, accessible through properties on the `WeDoBooksSDK` singleton.  
   Current namespaces include:  
-  `bookOperations`, `storageOperations`, `userOperations`, `localization`, `styling`, `images`, and `easyAccess`.
+  `bookOperations`, `storageOperations`, `userOperations`, `localization`, `style`, `images`, and `easyAccess`.
 
 - A user must be signed in to perform book operations.  
   This can be checked using `userOperations.currentUserId`, or by observing the `currentUserIdFlow`.
@@ -91,7 +91,7 @@ Working with the SDK generally follows this pattern:
 
 - Once signed in, books can be checked out and opened via the `bookOperations` namespace.
 
-- To show a custom loading screen while pages load, use `styling.setLoadingSVG()` with the entire SVG string as input:  
+- To show a custom loading screen while pages load, use `style.setLoadingSVG()` with the entire SVG string as input:  
   ```kotlin
   WeDoBooksSDK.styling.setLoadingSVG("<svg>...</svg>")
   ```
