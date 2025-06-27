@@ -37,7 +37,6 @@ DEMO_USER_ID="<user-id>"
 FIREBASE_API_KEY="<firebase-api-key>"
 FIREBASE_APP_ID="<firebase-app-id>"
 FIREBASE_PROJECT_ID="<firebase-project-id>"
-
 ```
 
 Once you've added these values, sync the Gradle project.
