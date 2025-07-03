@@ -208,7 +208,7 @@ fun StatsScreen(
                     goBack()
                 },
             shape = RoundedCornerShape(16.dp),
-            color = MaterialTheme.colorScheme.primary,
+            color = MaterialTheme.colorScheme.secondary,
         ) {
             Column(
                 modifier = Modifier.size(width = 200.dp, height = 48.dp),
@@ -216,7 +216,7 @@ fun StatsScreen(
                 verticalArrangement = Arrangement.Center
             ) {
                 Text(
-                    color = MaterialTheme.colorScheme.onPrimary,
+                    color = MaterialTheme.colorScheme.onSecondary,
                     modifier = Modifier,
                     text = "back"
                 )
