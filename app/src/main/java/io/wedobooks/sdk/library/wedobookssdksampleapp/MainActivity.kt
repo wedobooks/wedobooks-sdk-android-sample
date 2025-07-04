@@ -35,9 +35,11 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import io.wedobooks.sdk.R
 import io.wedobooks.sdk.WeDoBooksSDK
 import io.wedobooks.sdk.library.wedobookssdksampleapp.ui.LoginScreen
 import io.wedobooks.sdk.library.wedobookssdksampleapp.ui.MainScreen
+import io.wedobooks.sdk.library.wedobookssdksampleapp.ui.StatsScreen
 import io.wedobooks.sdk.library.wedobookssdksampleapp.ui.theme.WeDoBooksSDKSampleAppTheme
 import io.wedobooks.sdk.models.CheckoutBook
 import io.wedobooks.sdk.models.WeDoBooksConfiguration
@@ -89,12 +91,17 @@ class MainActivity : ComponentActivity() {
                         }
                         composable(route = Routes.main) {
                             MainScreen(
-                                goToReader = {
+                                setCheckout = {
                                     checkout = it
+                                },
+                                goToReader = {
                                     mainNavController.navigate(Routes.reader)
                                 },
                                 goToLogin = {
                                     mainNavController.navigate(Routes.login)
+                                },
+                                goToStats = {
+                                    mainNavController.navigate(Routes.stats)
                                 },
                                 toggleDarkMode = {
                                     isDarkMode = !isDarkMode
@@ -114,6 +121,14 @@ class MainActivity : ComponentActivity() {
                                 onAudioMinimizeClick = null, // different behavior for minimize else defaults to onCloseClick without stopping audio
                                 viewModelStoreOwner = null, // if you want to save state outside this composable
                                 isDarkMode = isDarkMode
+                            )
+                        }
+                        composable(route = Routes.stats) {
+                            StatsScreen(
+                                checkoutId = checkout?.id,
+                                goBack = {
+                                    mainNavController.popBackStack()
+                                }
                             )
                         }
                     }
@@ -214,8 +229,8 @@ fun EasyAccess(
                                     .padding(end = 16.dp),
                                 painter = painterResource(
                                     if (easyAccessIsPlayerPlaying) {
-                                        io.wedobooks.sdk.R.drawable.ic_pause
-                                    } else io.wedobooks.sdk.R.drawable.ic_play
+                                        R.drawable.ic_pause
+                                    } else R.drawable.ic_play
                                 ),
                                 tint = MaterialTheme.colorScheme.primary,
                                 contentDescription = null
