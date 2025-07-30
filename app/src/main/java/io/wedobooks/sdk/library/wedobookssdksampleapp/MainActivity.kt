@@ -37,6 +37,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import io.wedobooks.sdk.R
 import io.wedobooks.sdk.WeDoBooksSDK
+import io.wedobooks.sdk.library.wedobookssdksampleapp.ui.DownloadedBooksScreen
 import io.wedobooks.sdk.library.wedobookssdksampleapp.ui.LoginScreen
 import io.wedobooks.sdk.library.wedobookssdksampleapp.ui.MainScreen
 import io.wedobooks.sdk.library.wedobookssdksampleapp.ui.StatsScreen
@@ -103,6 +104,9 @@ class MainActivity : ComponentActivity() {
                                 goToStats = {
                                     mainNavController.navigate(Routes.stats)
                                 },
+                                goToDownloadedBooks = {
+                                    mainNavController.navigate(Routes.downloadedBooks)
+                                },
                                 toggleDarkMode = {
                                     isDarkMode = !isDarkMode
                                 }
@@ -126,6 +130,13 @@ class MainActivity : ComponentActivity() {
                         composable(route = Routes.stats) {
                             StatsScreen(
                                 checkoutId = checkout?.id,
+                                goBack = {
+                                    mainNavController.popBackStack()
+                                }
+                            )
+                        }
+                        composable(route = Routes.downloadedBooks) {
+                            DownloadedBooksScreen(
                                 goBack = {
                                     mainNavController.popBackStack()
                                 }

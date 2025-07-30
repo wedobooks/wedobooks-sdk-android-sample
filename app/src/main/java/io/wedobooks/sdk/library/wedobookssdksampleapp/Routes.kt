@@ -5,4 +5,5 @@ object Routes {
     val reader = "reader"
     val login = "login"
     val stats = "stats"
+    val downloadedBooks = "downloaded_books"
 }
