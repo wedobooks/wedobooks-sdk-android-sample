@@ -39,6 +39,7 @@ fun MainScreen(
     goToReader: () -> Unit,
     goToLogin: () -> Unit,
     goToStats: () -> Unit,
+    goToDownloadedBooks: () -> Unit,
     toggleDarkMode: () -> Unit,
 ) {
     val vm: MainScreenViewModel = viewModel()
@@ -120,6 +121,11 @@ fun MainScreen(
             )
 
             CustomButton(
+                title = "Downloaded List",
+                onClick = goToDownloadedBooks
+            )
+
+            CustomButton(
                 title = "Stop Audio",
                 onClick = {
                     vm.stopAudio()
@@ -152,6 +158,7 @@ fun MainScreen(
 
 @Composable
 fun CustomButton(
+    modifier: Modifier = Modifier,
     title: String,
     selectedTitle: String? = null,
     color: Color = MaterialTheme.colorScheme.primary,
@@ -166,7 +173,7 @@ fun CustomButton(
     val currentTextColor = if (isSelected) selectedTextColor else textColor
     val currentColor = if (isSelected) selectedColor else color
     Surface(
-        modifier = Modifier.clickable(
+        modifier = modifier.clickable(
             role = Role.Button,
             enabled = enabled && !isLoading,
             onClick = onClick
