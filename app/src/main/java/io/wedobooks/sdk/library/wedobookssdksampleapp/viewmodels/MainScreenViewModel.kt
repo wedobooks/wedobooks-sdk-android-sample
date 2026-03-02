@@ -21,7 +21,7 @@ class MainScreenViewModel: ViewModel() {
     // ask WeDoBooks for isbns for different books
     suspend fun getCheckout(bookType: BookType): CheckoutBook? {
         val isbn = when(bookType) {
-            BookType.Audiobook -> "9788741528779"
+            BookType.Audiobook -> "9780018134553" /*"9788741528779"*/
             BookType.Ebook -> "9780661420706"
             else -> null
         }
