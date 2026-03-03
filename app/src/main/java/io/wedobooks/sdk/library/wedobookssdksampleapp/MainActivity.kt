@@ -38,32 +38,17 @@ import androidx.navigation.compose.rememberNavController
 import io.wedobooks.sdk.R
 import io.wedobooks.sdk.WeDoBooksSDK
 import io.wedobooks.sdk.library.wedobookssdksampleapp.ui.DownloadedBooksScreen
+import io.wedobooks.sdk.library.wedobookssdksampleapp.ui.HeadlessAudioScreen
 import io.wedobooks.sdk.library.wedobookssdksampleapp.ui.LoginScreen
 import io.wedobooks.sdk.library.wedobookssdksampleapp.ui.MainScreen
-import io.wedobooks.sdk.library.wedobookssdksampleapp.ui.StatsScreen
 import io.wedobooks.sdk.library.wedobookssdksampleapp.ui.theme.WeDoBooksSDKSampleAppTheme
 import io.wedobooks.sdk.models.CheckoutBook
-import io.wedobooks.sdk.models.WeDoBooksConfiguration
-import io.wedobooks.sdk.models.WeDoBooksThemeConfiguration
+import io.wedobooks.sdk.sampleapp.ui.StatsScreen
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        WeDoBooksSDK.setup(
-            context = this.applicationContext,
-            config = WeDoBooksConfiguration(
-                applicationId = BuildConfig.APPLICATION_ID,
-                firebaseApiKey = Constants.SDK_API_KEY,
-                firebaseProjectId = Constants.SDK_PROJECT_ID,
-                firebaseAppId = Constants.SDK_APP_ID,
-                readerApiKey = BuildConfig.READER_API_KEY,
-                readerApiSecret = BuildConfig.READER_API_SECRET
-            ),
-            themeConfig = WeDoBooksThemeConfiguration
-                .builder()
-                .build()
-        )
         setContent {
             val mainNavController = rememberNavController()
             var checkout by remember {
@@ -98,6 +83,9 @@ class MainActivity : ComponentActivity() {
                                 goToReader = {
                                     mainNavController.navigate(Routes.reader)
                                 },
+                                goToHeadlessAudio = {
+                                    mainNavController.navigate(Routes.headlessAudio)
+                                },
                                 goToLogin = {
                                     mainNavController.navigate(Routes.login)
                                 },
@@ -124,7 +112,16 @@ class MainActivity : ComponentActivity() {
                                 isFinishButtonEnabled = false,
                                 onAudioMinimizeClick = null, // different behavior for minimize else defaults to onCloseClick without stopping audio
                                 viewModelStoreOwner = null, // if you want to save state outside this composable
-                                isDarkMode = isDarkMode
+                                initialAudioBookProgressMs = null, // used when useInternalProgressService is set to false in WDBConfiguration
+                                isDarkMode = isDarkMode,
+                            )
+                        }
+                        composable(route = Routes.headlessAudio) {
+                            HeadlessAudioScreen(
+                                checkout = checkout,
+                                goBack = {
+                                    mainNavController.popBackStack()
+                                }
                             )
                         }
                         composable(route = Routes.stats) {

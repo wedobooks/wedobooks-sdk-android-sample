@@ -37,6 +37,7 @@ import kotlinx.coroutines.launch
 fun MainScreen(
     setCheckout: (CheckoutBook) -> Unit,
     goToReader: () -> Unit,
+    goToHeadlessAudio: () -> Unit,
     goToLogin: () -> Unit,
     goToStats: () -> Unit,
     goToDownloadedBooks: () -> Unit,
@@ -113,6 +114,12 @@ fun MainScreen(
                 title = "To Reader",
                 onClick = goToReader,
                 enabled = selectedCheckout != null
+            )
+
+            CustomButton(
+                title = "To Headless Audio",
+                onClick = goToHeadlessAudio,
+                enabled = selectedCheckout?.type == BookType.Audiobook
             )
 
             CustomButton(

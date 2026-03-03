@@ -1,4 +1,4 @@
-package io.wedobooks.sdk.library.wedobookssdksampleapp.ui
+package io.wedobooks.sdk.sampleapp.ui
 
 import android.app.DatePickerDialog
 import androidx.compose.foundation.background
@@ -28,32 +28,18 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import io.wedobooks.sdk.library.wedobookssdksampleapp.viewmodels.StatsScreenViewModel
-import io.wedobooks.sdk.models.StatEntry
+import io.wedobooks.sdk.models.StatData
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
 import java.util.Locale
-import kotlin.collections.component1
-import kotlin.collections.component2
 
 private const val SELECT_DATE_TEXT = "Select Date"
-
-data class Stat(
-    override val audioMinutes: Int = 0,
-    override val ebookMinutes: Int = 0,
-    override val audioSeconds: Int = 0,
-    override val ebookSeconds: Int = 0,
-    override val wordsRead: Int = 0
-) : StatEntry {
-    override val minutesRead = audioMinutes + ebookMinutes
-    override val secondsRead = audioSeconds + ebookSeconds
-}
 
 @Composable
 fun StatsScreen(
@@ -230,11 +216,11 @@ private fun StatsView(
     title: String,
     selectedDate: Date?,
     selectedDateText: String,
-    stats: Map<String, StatEntry>
+    stats: Map<String, StatData>
 ) {
     val selectedStat by remember(stats, selectedDate) {
         derivedStateOf {
-            var newStat = Stat()
+            var newStat = StatData.EMPTY
             if (SELECT_DATE_TEXT == selectedDateText) {
                 stats.forEach { (_, value) ->
                     newStat = newStat.copy(
