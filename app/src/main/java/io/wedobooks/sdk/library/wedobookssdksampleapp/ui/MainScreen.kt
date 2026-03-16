@@ -30,7 +30,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import io.wedobooks.sdk.library.wedobookssdksampleapp.viewmodels.MainScreenViewModel
 import io.wedobooks.sdk.models.CheckoutBook
-import io.wedobooks.sdk.models.enums.BookType
+import io.wedobooks.sdk.models.enums.MaterialType
 import kotlinx.coroutines.launch
 
 @Composable
@@ -77,11 +77,11 @@ fun MainScreen(
                 selectedTitle = "reset",
                 color = MaterialTheme.colorScheme.primary,
                 onClick = {
-                    if (selectedCheckout?.type == BookType.Audiobook) {
+                    if (selectedCheckout?.type == MaterialType.Audiobook) {
                         selectedCheckout = null
                     } else {
                         coroutineScope.launch {
-                            vm.getCheckout(BookType.Audiobook)?.let {
+                            vm.getCheckout(MaterialType.Audiobook)?.let {
                                 selectedCheckout = it
                             }
                         }
@@ -89,7 +89,7 @@ fun MainScreen(
 
                 },
                 isLoading = isAudioBookLoading,
-                isSelected = selectedCheckout?.type == BookType.Audiobook
+                isSelected = selectedCheckout?.type == MaterialType.Audiobook
             )
 
             CustomButton(
@@ -97,18 +97,18 @@ fun MainScreen(
                 selectedTitle = "reset",
                 color = MaterialTheme.colorScheme.primary,
                 onClick = {
-                    if (selectedCheckout?.type == BookType.Ebook) {
+                    if (selectedCheckout?.type == MaterialType.Ebook) {
                         selectedCheckout = null
                     } else {
                         coroutineScope.launch {
-                            vm.getCheckout(BookType.Ebook)?.let {
+                            vm.getCheckout(MaterialType.Ebook)?.let {
                                 selectedCheckout = it
                             }
                         }
                     }
                 },
                 isLoading = isEbookLoading,
-                isSelected = selectedCheckout?.type == BookType.Ebook
+                isSelected = selectedCheckout?.type == MaterialType.Ebook
             )
 
             CustomButton(
@@ -120,13 +120,13 @@ fun MainScreen(
             CustomButton(
                 title = "To Headless Audio",
                 onClick = goToHeadlessAudio,
-                enabled = selectedCheckout?.type == BookType.Audiobook
+                enabled = selectedCheckout?.type == MaterialType.Audiobook
             )
 
             CustomButton(
                 title = "To WdbAudioPlayer",
                 onClick = goToWDBAudioPlayer,
-                enabled = selectedCheckout?.type == BookType.Audiobook
+                enabled = selectedCheckout?.type == MaterialType.Audiobook
             )
 
             CustomButton(

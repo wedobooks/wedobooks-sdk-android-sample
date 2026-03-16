@@ -18,7 +18,7 @@ import io.wedobooks.sdk.WeDoBooksSdk
 import io.wedobooks.sdk.library.wedobookssdksampleapp.services.WDBAudioPlayerSessionService
 import io.wedobooks.sdk.models.CheckoutBook
 import io.wedobooks.sdk.models.WdbAudioDownloadStatus
-import io.wedobooks.sdk.models.enums.BookType
+import io.wedobooks.sdk.models.enums.MaterialType
 import io.wedobooks.sdk.models.enums.WdbDownloadState
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -50,14 +50,14 @@ data class WDBAudioPlayerState(
     val downloadStatus: WdbAudioDownloadStatus? = null,
 ) {
     val canDownload: Boolean
-        get() = checkout?.type == BookType.Audiobook &&
+        get() = checkout?.type == MaterialType.Audiobook &&
             (downloadStatus == null ||
                 downloadStatus.state == WdbDownloadState.NotStarted ||
                 downloadStatus.state == WdbDownloadState.Cancelled ||
                 downloadStatus.state == WdbDownloadState.Error)
 
     val canDelete: Boolean
-        get() = checkout?.type == BookType.Audiobook &&
+        get() = checkout?.type == MaterialType.Audiobook &&
             downloadStatus != null &&
             downloadStatus.state != WdbDownloadState.NotStarted
 }
@@ -91,7 +91,7 @@ class WDBAudioPlayerScreenViewModel(application: Application) : AndroidViewModel
     init {
         combine(
             checkout,
-            WeDoBooksSdk.storage.audioDownloadsFlow
+            WeDoBooksSdk.storageOperations.audioDownloadsFlow
         ) { selectedCheckout, downloads ->
             val status = selectedCheckout?.materialId?.let { downloads[it] }
             selectedCheckout to status
@@ -111,7 +111,7 @@ class WDBAudioPlayerScreenViewModel(application: Application) : AndroidViewModel
     fun loadPlayer() {
         viewModelScope.launch {
             val selectedCheckout = checkout.value
-            if (selectedCheckout?.type != BookType.Audiobook) {
+            if (selectedCheckout?.type != MaterialType.Audiobook) {
                 _state.value = _state.value.copy(
                     statusMessage = "Select an audiobook first",
                     didLoad = false,
@@ -184,7 +184,7 @@ class WDBAudioPlayerScreenViewModel(application: Application) : AndroidViewModel
         viewModelScope.launch {
             val selectedCheckout = checkout.value ?: return@launch
             val started = runCatching {
-                WeDoBooksSdk.storage.downloadAudioBook(selectedCheckout)
+                WeDoBooksSdk.storageOperations.downloadAudioBook(selectedCheckout)
             }.onFailure {
                 Log.d(TAG, "downloadAudioBook failed: ${it.message}", it)
             }.getOrDefault(false)
@@ -198,7 +198,7 @@ class WDBAudioPlayerScreenViewModel(application: Application) : AndroidViewModel
         viewModelScope.launch {
             val selectedCheckout = checkout.value ?: return@launch
             val removed = runCatching {
-                WeDoBooksSdk.storage.removeAudioBookDownload(selectedCheckout)
+                WeDoBooksSdk.storageOperations.removeAudioBookDownload(selectedCheckout)
             }.onFailure {
                 Log.d(TAG, "removeAudioBookDownload failed: ${it.message}", it)
             }.getOrDefault(false)
@@ -259,6 +259,8 @@ class WDBAudioPlayerScreenViewModel(application: Application) : AndroidViewModel
                 ArrayList(checkout.author)
             )
             putString(WDBAudioPlayerSessionService.ARG_BOOK_TYPE, checkout.type.name)
+            putString(WDBAudioPlayerSessionService.ARG_USER_ID, checkout.userId)
+            putBoolean(WDBAudioPlayerSessionService.ARG_ACTIVE, checkout.active)
             putString(WDBAudioPlayerSessionService.ARG_COVER_URL, coverUrl)
             initialProgressMs?.let {
                 putLong(WDBAudioPlayerSessionService.ARG_INITIAL_PROGRESS_MS, it)
@@ -292,7 +294,7 @@ class WDBAudioPlayerScreenViewModel(application: Application) : AndroidViewModel
 
     private fun onDownloadStateChanged(currentState: WdbDownloadState?) {
         val selectedCheckout = checkout.value ?: return
-        if (selectedCheckout.type != BookType.Audiobook) return
+        if (selectedCheckout.type != MaterialType.Audiobook) return
         if (previousDownloadState != WdbDownloadState.Finished && currentState == WdbDownloadState.Finished) {
             viewModelScope.launch {
                 runCatching {

@@ -85,15 +85,15 @@ Working with the SDK generally follows this pattern:
 
 - SDK functionality is grouped into namespaces on `WeDoBooksSdk`.  
   In this sample app, the main namespaces are:  
-  `books`, `storage`, `user`, `localization`, `styling`, `images`, and `easyAccess`.
+  `bookOperations`, `storageOperations`, `userOperations`, `localization`, `styling`, `images`, and `easyAccess`.
 
 - A user must be signed in to perform book operations.  
-  This can be checked by observing `user.currentUserIdFlow`.
+  This can be checked by observing `userOperations.currentUserIdFlow`.
 
 - If no user is signed in, the sample app presents a login screen.  
   Tapping the login button will log in with the demo user ID specified in [`local.properties`](https://github.com/wedobooks/wedobooks-sdk-android-sample#localproperties).
 
-- Once signed in, books can be checked out and opened via the `books` namespace.
+- Once signed in, books can be checked out and opened via the `bookOperations` namespace.
 
 - To show a custom loading screen while pages load, use `styling.setLoadingSVG()` with the entire SVG string as input:  
   ```kotlin

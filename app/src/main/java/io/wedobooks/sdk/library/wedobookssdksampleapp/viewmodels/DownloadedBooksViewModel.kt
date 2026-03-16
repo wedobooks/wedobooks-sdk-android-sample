@@ -12,11 +12,11 @@ class DownloadedBooksViewModel: ViewModel() {
 
     fun getDownloadedBooks() {
         _downloadedListFlow.update {
-            WeDoBooksSdk.storage.getDownloadedBooks()
+            WeDoBooksSdk.storageOperations.getDownloadedBooks()
         }
     }
 
     fun removeDownload(isbn: String): Boolean {
-        return WeDoBooksSdk.storage.removeBook(isbn)
+        return WeDoBooksSdk.storageOperations.removeBook(isbn)
     }
 }

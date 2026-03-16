@@ -106,7 +106,7 @@ class MainActivity : ComponentActivity() {
                         }
                         composable(route = Routes.reader) {
                             // you can set your own coverUrl else set to null if you want to use coverUrl provided by WeDoBooks
-                            WeDoBooksSdk.books.BookScreen(
+                            WeDoBooksSdk.bookOperations.BookScreen(
                                 checkout = checkout,
                                 coverUrl = null,
                                 onCloseClick = {
@@ -173,13 +173,13 @@ class MainActivity : ComponentActivity() {
 
     override fun onActionModeStarted(mode: ActionMode?) {
         super.onActionModeStarted(mode)
-        WeDoBooksSdk.books.actionModeStarted(mode)
+        WeDoBooksSdk.bookOperations.actionModeStarted(mode)
 
     }
 
     override fun onActionModeFinished(mode: ActionMode?) {
         super.onActionModeFinished(mode)
-        WeDoBooksSdk.books.actionModeFinished(mode)
+        WeDoBooksSdk.bookOperations.actionModeFinished(mode)
     }
 }
 

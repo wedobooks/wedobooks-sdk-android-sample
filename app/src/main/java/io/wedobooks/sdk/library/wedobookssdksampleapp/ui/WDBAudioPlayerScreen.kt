@@ -18,7 +18,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import io.wedobooks.sdk.library.wedobookssdksampleapp.viewmodels.WDBAudioPlayerScreenViewModel
 import io.wedobooks.sdk.models.CheckoutBook
-import io.wedobooks.sdk.models.enums.BookType
+import io.wedobooks.sdk.models.enums.MaterialType
 
 @Composable
 fun WDBAudioPlayerScreen(
@@ -73,7 +73,7 @@ fun WDBAudioPlayerScreen(
 
                 CustomButton(
                     title = "Play / Pause",
-                    enabled = uiState.checkout?.type == BookType.Audiobook &&
+                    enabled = uiState.checkout?.type == MaterialType.Audiobook &&
                         uiState.didLoad &&
                         uiState.isPlayerReady &&
                         !uiState.isLoading,
@@ -82,7 +82,7 @@ fun WDBAudioPlayerScreen(
 
                 CustomButton(
                     title = "+15 sec",
-                    enabled = uiState.checkout?.type == BookType.Audiobook &&
+                    enabled = uiState.checkout?.type == MaterialType.Audiobook &&
                         uiState.didLoad &&
                         uiState.isPlayerReady &&
                         !uiState.isLoading,
@@ -91,7 +91,7 @@ fun WDBAudioPlayerScreen(
 
                 CustomButton(
                     title = "Kill",
-                    enabled = uiState.checkout?.type == BookType.Audiobook,
+                    enabled = uiState.checkout?.type == MaterialType.Audiobook,
                     onClick = {
                         vm.killPlayer()
                         goBack()

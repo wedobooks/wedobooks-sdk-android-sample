@@ -16,7 +16,7 @@ import com.google.common.util.concurrent.SettableFuture
 import io.wedobooks.sdk.WeDoBooksSdk
 import io.wedobooks.sdk.models.CheckoutBook
 import io.wedobooks.sdk.models.WdbAudioPlayer
-import io.wedobooks.sdk.models.enums.BookType
+import io.wedobooks.sdk.models.enums.MaterialType
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -40,6 +40,8 @@ class WDBAudioPlayerSessionService : MediaLibraryService() {
         const val ARG_TITLE = "arg_title"
         const val ARG_AUTHORS = "arg_authors"
         const val ARG_BOOK_TYPE = "arg_book_type"
+        const val ARG_USER_ID = "arg_user_id"
+        const val ARG_ACTIVE = "arg_active"
         const val ARG_COVER_URL = "arg_cover_url"
         const val ARG_INITIAL_PROGRESS_MS = "arg_initial_progress_ms"
     }
@@ -100,13 +102,17 @@ class WDBAudioPlayerSessionService : MediaLibraryService() {
         val title = args.getString(ARG_TITLE) ?: return null
         val authors = args.getStringArrayList(ARG_AUTHORS)?.toList() ?: emptyList()
         val typeName = args.getString(ARG_BOOK_TYPE) ?: return null
-        val type = runCatching { BookType.valueOf(typeName) }.getOrNull() ?: return null
+        val type = MaterialType.from(typeName)
+        val userId = args.getString(ARG_USER_ID).orEmpty()
+        val active = args.getBoolean(ARG_ACTIVE, true)
         return object : CheckoutBook {
             override val id: String = checkoutId
+            override val userId: String = userId
+            override val active: Boolean = active
             override val author: List<String> = authors
             override val materialId: String = materialId
             override val title: String = title
-            override val type: BookType = type
+            override val type: MaterialType = type
             override val publisher: String = ""
             override val start: Instant = Instant.EPOCH
             override val end: Instant = Instant.EPOCH

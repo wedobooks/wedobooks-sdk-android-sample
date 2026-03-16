@@ -11,9 +11,9 @@ import java.time.LocalDate
 class StatsScreenViewModel(
     checkoutId: String?
 ): ViewModel() {
-    val statsForCurrentYear  = WeDoBooksSdk.user.userStatsForYear(LocalDate.now().year.toString())
+    val statsForCurrentYear  = WeDoBooksSdk.userOperations.userStatsForYear(LocalDate.now().year.toString())
     val statsForCheckout =  checkoutId?.let {
-        WeDoBooksSdk.user.userStatsForCheckout(it)
+        WeDoBooksSdk.userOperations.userStatsForCheckout(it)
     } ?: flowOf(emptyMap())
 
     companion object {
