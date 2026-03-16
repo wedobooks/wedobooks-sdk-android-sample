@@ -1,7 +1,7 @@
 package io.wedobooks.sdk.library.wedobookssdksampleapp.viewmodels
 
 import androidx.lifecycle.ViewModel
-import io.wedobooks.sdk.WeDoBooksSDK
+import io.wedobooks.sdk.WeDoBooksSdk
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
@@ -12,11 +12,11 @@ class DownloadedBooksViewModel: ViewModel() {
 
     fun getDownloadedBooks() {
         _downloadedListFlow.update {
-            WeDoBooksSDK.storageOperations.getDownloadedBooks()
+            WeDoBooksSdk.storage.getDownloadedBooks()
         }
     }
 
     fun removeDownload(isbn: String): Boolean {
-        return WeDoBooksSDK.storageOperations.removeBook(isbn)
+        return WeDoBooksSdk.storage.removeBook(isbn)
     }
 }

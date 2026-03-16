@@ -37,4 +37,3 @@ fun Settings.getLocalProperty(key: String): String? {
 
 rootProject.name = "WeDoBooks SDK sample app"
 include(":app")
- 

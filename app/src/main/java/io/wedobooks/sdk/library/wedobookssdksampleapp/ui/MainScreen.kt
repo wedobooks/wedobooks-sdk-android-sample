@@ -38,6 +38,7 @@ fun MainScreen(
     setCheckout: (CheckoutBook) -> Unit,
     goToReader: () -> Unit,
     goToHeadlessAudio: () -> Unit,
+    goToWDBAudioPlayer: () -> Unit,
     goToLogin: () -> Unit,
     goToStats: () -> Unit,
     goToDownloadedBooks: () -> Unit,
@@ -119,6 +120,12 @@ fun MainScreen(
             CustomButton(
                 title = "To Headless Audio",
                 onClick = goToHeadlessAudio,
+                enabled = selectedCheckout?.type == BookType.Audiobook
+            )
+
+            CustomButton(
+                title = "To WdbAudioPlayer",
+                onClick = goToWDBAudioPlayer,
                 enabled = selectedCheckout?.type == BookType.Audiobook
             )
 

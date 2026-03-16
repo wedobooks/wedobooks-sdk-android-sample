@@ -3,7 +3,7 @@ package io.wedobooks.sdk.library.wedobookssdksampleapp.viewmodels
 import android.util.Log
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
-import io.wedobooks.sdk.WeDoBooksSDK
+import io.wedobooks.sdk.WeDoBooksSdk
 import io.wedobooks.sdk.library.wedobookssdksampleapp.service.AuthService
 import io.wedobooks.sdk.models.CheckoutBook
 import io.wedobooks.sdk.models.enums.BookType
@@ -21,7 +21,7 @@ class MainScreenViewModel: ViewModel() {
     // ask WeDoBooks for isbns for different books
     suspend fun getCheckout(bookType: BookType): CheckoutBook? {
         val isbn = when(bookType) {
-            BookType.Audiobook -> "9780018134553" /*"9788741528779"*/
+            BookType.Audiobook -> "9780018134553"
             BookType.Ebook -> "9780661420706"
             else -> null
         }
@@ -35,7 +35,7 @@ class MainScreenViewModel: ViewModel() {
 
         return isbn?.let {
             try {
-                WeDoBooksSDK.bookOperations.getCheckout(it)
+                WeDoBooksSdk.books.getCheckout(it)
             } catch (e: Exception) {
                 Log.d(TAG, "err: ${e.message}")
                 didCheckoutFail.update { true }
@@ -47,7 +47,7 @@ class MainScreenViewModel: ViewModel() {
     }
 
     fun stopAudio() {
-        WeDoBooksSDK.bookOperations.stopAudioPlayer()
+        WeDoBooksSdk.books.stopAudioPlayer()
     }
 
     fun logout() {
@@ -55,6 +55,6 @@ class MainScreenViewModel: ViewModel() {
     }
 
     fun removeStorage() {
-        WeDoBooksSDK.storageOperations.removeAll()
+        WeDoBooksSdk.storage.removeAll()
     }
 }

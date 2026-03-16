@@ -36,7 +36,8 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import io.wedobooks.sdk.R
-import io.wedobooks.sdk.WeDoBooksSDK
+import io.wedobooks.sdk.WeDoBooksSdk
+import io.wedobooks.sdk.library.wedobookssdksampleapp.ui.WDBAudioPlayerScreen
 import io.wedobooks.sdk.library.wedobookssdksampleapp.ui.DownloadedBooksScreen
 import io.wedobooks.sdk.library.wedobookssdksampleapp.ui.HeadlessAudioScreen
 import io.wedobooks.sdk.library.wedobookssdksampleapp.ui.LoginScreen
@@ -86,6 +87,9 @@ class MainActivity : ComponentActivity() {
                                 goToHeadlessAudio = {
                                     mainNavController.navigate(Routes.headlessAudio)
                                 },
+                                goToWDBAudioPlayer = {
+                                    mainNavController.navigate(Routes.wdbAudioPlayer)
+                                },
                                 goToLogin = {
                                     mainNavController.navigate(Routes.login)
                                 },
@@ -102,7 +106,7 @@ class MainActivity : ComponentActivity() {
                         }
                         composable(route = Routes.reader) {
                             // you can set your own coverUrl else set to null if you want to use coverUrl provided by WeDoBooks
-                            WeDoBooksSDK.bookOperations.getReader(
+                            WeDoBooksSdk.books.BookScreen(
                                 checkout = checkout,
                                 coverUrl = null,
                                 onCloseClick = {
@@ -112,12 +116,20 @@ class MainActivity : ComponentActivity() {
                                 isFinishButtonEnabled = false,
                                 onAudioMinimizeClick = null, // different behavior for minimize else defaults to onCloseClick without stopping audio
                                 viewModelStoreOwner = null, // if you want to save state outside this composable
-                                initialAudioBookProgressMs = null, // used when useInternalProgressService is set to false in WDBConfiguration
+                                initialAudioBookProgressMs = null, // used when useInternalProgressService is set to false in WdbConfiguration
                                 isDarkMode = isDarkMode,
                             )
                         }
                         composable(route = Routes.headlessAudio) {
                             HeadlessAudioScreen(
+                                checkout = checkout,
+                                goBack = {
+                                    mainNavController.popBackStack()
+                                }
+                            )
+                        }
+                        composable(route = Routes.wdbAudioPlayer) {
+                            WDBAudioPlayerScreen(
                                 checkout = checkout,
                                 goBack = {
                                     mainNavController.popBackStack()
@@ -161,13 +173,13 @@ class MainActivity : ComponentActivity() {
 
     override fun onActionModeStarted(mode: ActionMode?) {
         super.onActionModeStarted(mode)
-        WeDoBooksSDK.bookOperations.actionModeStarted(mode)
+        WeDoBooksSdk.books.actionModeStarted(mode)
 
     }
 
     override fun onActionModeFinished(mode: ActionMode?) {
         super.onActionModeFinished(mode)
-        WeDoBooksSDK.bookOperations.actionModeFinished(mode)
+        WeDoBooksSdk.books.actionModeFinished(mode)
     }
 }
 
@@ -179,11 +191,11 @@ fun EasyAccess(
 ) {
     val ctx = LocalContext.current.applicationContext
     // very important to use lastOpenedBookFlow like this or in a ViewModel you don't want it to infinitely recompose
-    val easyAccessState by remember { WeDoBooksSDK.easyAccess.lastOpenedBookFlow(ctx) }.collectAsState(
+    val easyAccessState by remember { WeDoBooksSdk.easyAccess.lastOpenedBookFlow(ctx) }.collectAsState(
         null
     )
-    val easyAccessAudioActive by WeDoBooksSDK.easyAccess.isPlayerActive.collectAsState(null to false)
-    val easyAccessIsPlayerPlaying by WeDoBooksSDK.easyAccess.isPlayerPlaying.collectAsState(false)
+    val easyAccessAudioActive by WeDoBooksSdk.easyAccess.isPlayerActive.collectAsState(null to false)
+    val easyAccessIsPlayerPlaying by WeDoBooksSdk.easyAccess.isPlayerPlaying.collectAsState(false)
     val currentRoute = navController.currentBackStackEntryAsState()
 
     currentRoute.value?.destination?.route?.let {
@@ -230,7 +242,7 @@ fun EasyAccess(
                                 modifier = Modifier
                                     .clickable(
                                         onClick = {
-                                            WeDoBooksSDK.easyAccess.togglePlay()
+                                            WeDoBooksSdk.easyAccess.togglePlay()
                                         }
                                     )
                                     .align(Alignment.CenterEnd)

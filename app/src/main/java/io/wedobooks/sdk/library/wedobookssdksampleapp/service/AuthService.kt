@@ -1,7 +1,7 @@
 package io.wedobooks.sdk.library.wedobookssdksampleapp.service
 
 import android.util.Log
-import io.wedobooks.sdk.WeDoBooksSDK
+import io.wedobooks.sdk.WeDoBooksSdk
 import io.wedobooks.sdk.library.wedobookssdksampleapp.BuildConfig
 import io.wedobooks.sdk.library.wedobookssdksampleapp.util.await
 import kotlinx.coroutines.Dispatchers
@@ -20,7 +20,7 @@ class AuthService private constructor() {
         val instance = AuthService()
     }
     private val client = OkHttpClient()
-    val currentUser = WeDoBooksSDK.userOperations.currentUserIdFlow
+    val currentUser = WeDoBooksSdk.user.currentUserIdFlow
 
     suspend fun getToken(uid: String): String? {
         return withContext(Dispatchers.IO) {
@@ -46,11 +46,11 @@ class AuthService private constructor() {
 
     suspend fun tokenLogin(token: String) {
         withContext(Dispatchers.IO) {
-            WeDoBooksSDK.userOperations.signInWithToken(token)
+            WeDoBooksSdk.user.signInWithToken(token)
         }
     }
 
     fun logout() {
-        WeDoBooksSDK.userOperations.signOut()
+        WeDoBooksSdk.user.signOut()
     }
 }

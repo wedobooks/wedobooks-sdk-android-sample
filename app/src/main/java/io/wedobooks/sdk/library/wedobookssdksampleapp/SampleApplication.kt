@@ -1,26 +1,28 @@
 package io.wedobooks.sdk.library.wedobookssdksampleapp
 
 import android.app.Application
-import io.wedobooks.sdk.WeDoBooksSDK
-import io.wedobooks.sdk.models.WDBConfiguration
-import io.wedobooks.sdk.models.WDBThemeConfiguration
+import io.wedobooks.sdk.WeDoBooksSdk
+import io.wedobooks.sdk.models.SdkMode
+import io.wedobooks.sdk.models.WdbConfiguration
+import io.wedobooks.sdk.models.WdbThemeConfiguration
 
 class SampleApplication : Application() {
     override fun onCreate() {
         super.onCreate()
 
-        WeDoBooksSDK.setup(
+        WeDoBooksSdk.setup(
             context = applicationContext,
-            config = WDBConfiguration(
+            config = WdbConfiguration(
                 applicationId = BuildConfig.APPLICATION_ID,
                 firebaseApiKey = Constants.SDK_API_KEY,
                 firebaseProjectId = Constants.SDK_PROJECT_ID,
                 firebaseAppId = Constants.SDK_APP_ID,
                 readerApiKey = BuildConfig.READER_API_KEY,
                 readerApiSecret = BuildConfig.READER_API_SECRET,
-                useInternalProgressService = false
+                useInternalProgressService = false,
+                sdkMode = SdkMode.Streaming,
             ),
-            themeConfig = WDBThemeConfiguration
+            themeConfig = WdbThemeConfiguration
                 .builder()
                 .build()
         )
