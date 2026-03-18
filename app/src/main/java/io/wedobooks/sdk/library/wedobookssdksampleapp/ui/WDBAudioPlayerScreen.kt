@@ -17,12 +17,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import io.wedobooks.sdk.library.wedobookssdksampleapp.viewmodels.WDBAudioPlayerScreenViewModel
-import io.wedobooks.sdk.models.CheckoutBook
+import io.wedobooks.sdk.models.Checkout
 import io.wedobooks.sdk.models.enums.MaterialType
 
 @Composable
 fun WDBAudioPlayerScreen(
-    checkout: CheckoutBook?,
+    checkout: Checkout?,
     goBack: () -> Unit,
 ) {
     val vm: WDBAudioPlayerScreenViewModel = viewModel()

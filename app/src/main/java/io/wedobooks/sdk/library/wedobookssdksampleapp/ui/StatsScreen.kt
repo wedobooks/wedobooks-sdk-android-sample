@@ -1,4 +1,4 @@
-package io.wedobooks.sdk.sampleapp.ui
+package io.wedobooks.sdk.library.wedobookssdksampleapp.ui
 
 import android.app.DatePickerDialog
 import androidx.compose.foundation.background
@@ -33,6 +33,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import io.wedobooks.sdk.library.wedobookssdksampleapp.viewmodels.StatsScreenViewModel
+import io.wedobooks.sdk.models.Checkout
 import io.wedobooks.sdk.models.StatData
 import java.text.SimpleDateFormat
 import java.util.Calendar
@@ -43,12 +44,12 @@ private const val SELECT_DATE_TEXT = "Select Date"
 
 @Composable
 fun StatsScreen(
-    checkoutId: String?,
+    checkout: Checkout?,
     goBack: () -> Unit,
 ) {
     val ctx = LocalContext.current
     val vm: StatsScreenViewModel = viewModel(
-        factory = StatsScreenViewModel.factory(checkoutId)
+        factory = StatsScreenViewModel.factory(checkout)
     )
     var selectedDate by remember {
         mutableStateOf<Date?>(null)
@@ -72,7 +73,7 @@ fun StatsScreen(
     val pagerState = rememberPagerState(
         initialPage = 0,
         pageCount = {
-            if (checkoutId != null) {
+            if (checkout != null) {
                 2
             } else 1
         }

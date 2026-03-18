@@ -16,7 +16,7 @@ import com.google.common.util.concurrent.ListenableFuture
 import com.google.common.util.concurrent.MoreExecutors
 import io.wedobooks.sdk.WeDoBooksSdk
 import io.wedobooks.sdk.library.wedobookssdksampleapp.services.WDBAudioPlayerSessionService
-import io.wedobooks.sdk.models.CheckoutBook
+import io.wedobooks.sdk.models.Checkout
 import io.wedobooks.sdk.models.WdbAudioDownloadStatus
 import io.wedobooks.sdk.models.enums.MaterialType
 import io.wedobooks.sdk.models.enums.WdbDownloadState
@@ -39,7 +39,7 @@ import kotlin.math.max
 private const val TAG = "WDBAudioPlayerVM"
 
 data class WDBAudioPlayerState(
-    val checkout: CheckoutBook? = null,
+    val checkout: Checkout? = null,
     val didLoad: Boolean = false,
     val isLoading: Boolean = false,
     val isPlayerReady: Boolean = false,
@@ -63,7 +63,7 @@ data class WDBAudioPlayerState(
 }
 
 class WDBAudioPlayerScreenViewModel(application: Application) : AndroidViewModel(application) {
-    private val checkout = MutableStateFlow<CheckoutBook?>(null)
+    private val checkout = MutableStateFlow<Checkout?>(null)
     private val _state = MutableStateFlow(WDBAudioPlayerState())
     private var controller: MediaController? = null
     private var controllerFuture: ListenableFuture<MediaController>? = null
@@ -104,7 +104,7 @@ class WDBAudioPlayerScreenViewModel(application: Application) : AndroidViewModel
         }.launchIn(viewModelScope)
     }
 
-    fun setCheckout(value: CheckoutBook?) {
+    fun setCheckout(value: Checkout?) {
         checkout.value = value
     }
 
@@ -184,10 +184,10 @@ class WDBAudioPlayerScreenViewModel(application: Application) : AndroidViewModel
         viewModelScope.launch {
             val selectedCheckout = checkout.value ?: return@launch
             val started = runCatching {
-                WeDoBooksSdk.storageOperations.downloadAudioBook(selectedCheckout)
+                WeDoBooksSdk.storageOperations.downloadBook(selectedCheckout)
             }.onFailure {
                 Log.d(TAG, "downloadAudioBook failed: ${it.message}", it)
-            }.getOrDefault(false)
+            }.isSuccess
             _state.value = _state.value.copy(
                 statusMessage = if (started) "Download started" else "Download failed"
             )
@@ -198,7 +198,7 @@ class WDBAudioPlayerScreenViewModel(application: Application) : AndroidViewModel
         viewModelScope.launch {
             val selectedCheckout = checkout.value ?: return@launch
             val removed = runCatching {
-                WeDoBooksSdk.storageOperations.removeAudioBookDownload(selectedCheckout)
+                WeDoBooksSdk.storageOperations.removeBook(selectedCheckout.materialId)
             }.onFailure {
                 Log.d(TAG, "removeAudioBookDownload failed: ${it.message}", it)
             }.getOrDefault(false)
@@ -245,7 +245,7 @@ class WDBAudioPlayerScreenViewModel(application: Application) : AndroidViewModel
     }
 
     private suspend fun loadBookWithCommand(
-        checkout: CheckoutBook,
+        checkout: Checkout,
         coverUrl: String?,
         initialProgressMs: Long?,
     ): Boolean {
@@ -259,8 +259,6 @@ class WDBAudioPlayerScreenViewModel(application: Application) : AndroidViewModel
                 ArrayList(checkout.author)
             )
             putString(WDBAudioPlayerSessionService.ARG_BOOK_TYPE, checkout.type.name)
-            putString(WDBAudioPlayerSessionService.ARG_USER_ID, checkout.userId)
-            putBoolean(WDBAudioPlayerSessionService.ARG_ACTIVE, checkout.active)
             putString(WDBAudioPlayerSessionService.ARG_COVER_URL, coverUrl)
             initialProgressMs?.let {
                 putLong(WDBAudioPlayerSessionService.ARG_INITIAL_PROGRESS_MS, it)

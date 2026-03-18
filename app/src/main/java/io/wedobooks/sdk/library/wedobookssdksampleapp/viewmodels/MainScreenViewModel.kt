@@ -5,7 +5,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import io.wedobooks.sdk.WeDoBooksSdk
 import io.wedobooks.sdk.library.wedobookssdksampleapp.service.AuthService
-import io.wedobooks.sdk.models.CheckoutBook
+import io.wedobooks.sdk.models.Checkout
 import io.wedobooks.sdk.models.enums.MaterialType
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.update
@@ -19,7 +19,7 @@ class MainScreenViewModel: ViewModel() {
     val didCheckoutFail = MutableStateFlow(false)
 
     // ask WeDoBooks for isbns for different books
-    suspend fun getCheckout(bookType: MaterialType): CheckoutBook? {
+    suspend fun getCheckout(bookType: MaterialType): Checkout? {
         val isbn = when(bookType) {
             MaterialType.Audiobook -> "9780018134553"
             MaterialType.Ebook -> "9780661420706"
@@ -35,7 +35,7 @@ class MainScreenViewModel: ViewModel() {
 
         return isbn?.let {
             try {
-                WeDoBooksSdk.bookOperations.getCheckout(it)
+                WeDoBooksSdk.bookOperations.checkoutBook(it)
             } catch (e: Exception) {
                 Log.d(TAG, "err: ${e.message}")
                 didCheckoutFail.update { true }

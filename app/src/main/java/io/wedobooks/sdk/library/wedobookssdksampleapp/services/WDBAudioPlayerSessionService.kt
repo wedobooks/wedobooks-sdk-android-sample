@@ -14,7 +14,7 @@ import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
 import com.google.common.util.concurrent.SettableFuture
 import io.wedobooks.sdk.WeDoBooksSdk
-import io.wedobooks.sdk.models.CheckoutBook
+import io.wedobooks.sdk.models.Checkout
 import io.wedobooks.sdk.models.WdbAudioPlayer
 import io.wedobooks.sdk.models.enums.MaterialType
 import kotlinx.coroutines.CoroutineScope
@@ -40,8 +40,6 @@ class WDBAudioPlayerSessionService : MediaLibraryService() {
         const val ARG_TITLE = "arg_title"
         const val ARG_AUTHORS = "arg_authors"
         const val ARG_BOOK_TYPE = "arg_book_type"
-        const val ARG_USER_ID = "arg_user_id"
-        const val ARG_ACTIVE = "arg_active"
         const val ARG_COVER_URL = "arg_cover_url"
         const val ARG_INITIAL_PROGRESS_MS = "arg_initial_progress_ms"
     }
@@ -80,7 +78,7 @@ class WDBAudioPlayerSessionService : MediaLibraryService() {
     }
 
     private suspend fun loadBookInternal(
-        checkout: CheckoutBook,
+        checkout: Checkout,
         coverUrl: String?,
         initialProgressMs: Long?,
     ): Boolean = withContext(Dispatchers.Main.immediate) {
@@ -96,19 +94,17 @@ class WDBAudioPlayerSessionService : MediaLibraryService() {
         loaded
     }
 
-    private fun parseCheckout(args: Bundle): CheckoutBook? {
+    private fun parseCheckout(args: Bundle): Checkout? {
         val checkoutId = args.getString(ARG_CHECKOUT_ID) ?: return null
         val materialId = args.getString(ARG_MATERIAL_ID) ?: return null
         val title = args.getString(ARG_TITLE) ?: return null
         val authors = args.getStringArrayList(ARG_AUTHORS)?.toList() ?: emptyList()
         val typeName = args.getString(ARG_BOOK_TYPE) ?: return null
-        val type = MaterialType.from(typeName)
-        val userId = args.getString(ARG_USER_ID).orEmpty()
-        val active = args.getBoolean(ARG_ACTIVE, true)
-        return object : CheckoutBook {
+        val type = runCatching { MaterialType.valueOf(typeName) }.getOrNull() ?: return null
+        return object : Checkout {
             override val id: String = checkoutId
-            override val userId: String = userId
-            override val active: Boolean = active
+            override val userId: String = ""
+            override val active: Boolean = true
             override val author: List<String> = authors
             override val materialId: String = materialId
             override val title: String = title

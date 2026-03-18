@@ -29,13 +29,13 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import io.wedobooks.sdk.library.wedobookssdksampleapp.viewmodels.MainScreenViewModel
-import io.wedobooks.sdk.models.CheckoutBook
+import io.wedobooks.sdk.models.Checkout
 import io.wedobooks.sdk.models.enums.MaterialType
 import kotlinx.coroutines.launch
 
 @Composable
 fun MainScreen(
-    setCheckout: (CheckoutBook) -> Unit,
+    setCheckout: (Checkout) -> Unit,
     goToReader: () -> Unit,
     goToHeadlessAudio: () -> Unit,
     goToWDBAudioPlayer: () -> Unit,
@@ -51,7 +51,7 @@ fun MainScreen(
     val isAudioBookLoading by vm.isAudioCheckoutLoading
 
     var selectedCheckout by remember {
-        mutableStateOf<CheckoutBook?>(null)
+        mutableStateOf<Checkout?>(null)
     }
 
     LaunchedEffect(selectedCheckout) {
