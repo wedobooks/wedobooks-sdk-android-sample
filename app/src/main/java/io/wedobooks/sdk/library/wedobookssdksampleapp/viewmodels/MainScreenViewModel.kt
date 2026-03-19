@@ -3,10 +3,10 @@ package io.wedobooks.sdk.library.wedobookssdksampleapp.viewmodels
 import android.util.Log
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
-import io.wedobooks.sdk.WeDoBooksSDK
+import io.wedobooks.sdk.WeDoBooksSdk
 import io.wedobooks.sdk.library.wedobookssdksampleapp.service.AuthService
-import io.wedobooks.sdk.models.CheckoutBook
-import io.wedobooks.sdk.models.enums.BookType
+import io.wedobooks.sdk.models.Checkout
+import io.wedobooks.sdk.models.enums.MaterialType
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.update
 
@@ -19,15 +19,15 @@ class MainScreenViewModel: ViewModel() {
     val didCheckoutFail = MutableStateFlow(false)
 
     // ask WeDoBooks for isbns for different books
-    suspend fun getCheckout(bookType: BookType): CheckoutBook? {
+    suspend fun getCheckout(bookType: MaterialType): Checkout? {
         val isbn = when(bookType) {
-            BookType.Audiobook -> "9780018134553" /*"9788741528779"*/
-            BookType.Ebook -> "9780661420706"
+            MaterialType.Audiobook -> "9780018134553"
+            MaterialType.Ebook -> "9780661420706"
             else -> null
         }
         val loader = when (bookType) {
-            BookType.Audiobook ->  isAudioCheckoutLoading
-            BookType.Ebook ->  isEbookCheckoutLoading
+            MaterialType.Audiobook ->  isAudioCheckoutLoading
+            MaterialType.Ebook ->  isEbookCheckoutLoading
             else -> mutableStateOf(false)
         }
         loader.value = true
@@ -35,7 +35,7 @@ class MainScreenViewModel: ViewModel() {
 
         return isbn?.let {
             try {
-                WeDoBooksSDK.bookOperations.getCheckout(it)
+                WeDoBooksSdk.bookOperations.checkoutBook(it)
             } catch (e: Exception) {
                 Log.d(TAG, "err: ${e.message}")
                 didCheckoutFail.update { true }
@@ -47,7 +47,7 @@ class MainScreenViewModel: ViewModel() {
     }
 
     fun stopAudio() {
-        WeDoBooksSDK.bookOperations.stopAudioPlayer()
+        WeDoBooksSdk.bookOperations.stopAudioPlayer()
     }
 
     fun logout() {
@@ -55,6 +55,6 @@ class MainScreenViewModel: ViewModel() {
     }
 
     fun removeStorage() {
-        WeDoBooksSDK.storageOperations.removeAll()
+        WeDoBooksSdk.storageOperations.removeAll()
     }
 }

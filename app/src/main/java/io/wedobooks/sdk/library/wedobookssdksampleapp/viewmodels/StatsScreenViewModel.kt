@@ -4,24 +4,25 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
-import io.wedobooks.sdk.WeDoBooksSDK
+import io.wedobooks.sdk.WeDoBooksSdk
+import io.wedobooks.sdk.models.Checkout
 import kotlinx.coroutines.flow.flowOf
 import java.time.LocalDate
 
 class StatsScreenViewModel(
-    checkoutId: String?
+    checkout: Checkout?
 ): ViewModel() {
-    val statsForCurrentYear  = WeDoBooksSDK.userOperations.userStatsForYear(LocalDate.now().year.toString())
-    val statsForCheckout =  checkoutId?.let {
-        WeDoBooksSDK.userOperations.userStatsForCheckout(it)
+    val statsForCurrentYear  = WeDoBooksSdk.userOperations.totalStats(LocalDate.now().year.toString())
+    val statsForCheckout =  checkout?.let {
+        WeDoBooksSdk.userOperations.totalStats(it)
     } ?: flowOf(emptyMap())
 
     companion object {
         fun factory(
-            checkoutId: String?
+            checkout: Checkout?
         ): ViewModelProvider.Factory = viewModelFactory {
             initializer {
-                StatsScreenViewModel(checkoutId = checkoutId)
+                StatsScreenViewModel(checkout = checkout)
             }
         }
     }

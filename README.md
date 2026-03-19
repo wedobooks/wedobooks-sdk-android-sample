@@ -77,27 +77,27 @@ Refer to `LoginViewModel.login()` for the demo call implementation.
 
 Working with the SDK generally follows this pattern:
 
-- The WeDoBooksFacade singleton is the gateway to all the SDK functionality and can be accessed like this  `WeDoBooksSDK`
+- `WeDoBooksSdk` is the singleton gateway to SDK functionality.
 
-- Before using any SDK features, call the `setup()` method on the singleton.  
-  This must only be called once. Repeated calls will result in an error.  
-  You can use `WeDoBooksThemeConfiguration.builder().build()` to create a default theme configuration, or customize it as needed.
+- Before using any SDK features, call `setup()` once.  
+  Repeated calls will result in an error.  
+  You can use `WdbThemeConfiguration.builder().build()` to create a default theme configuration, or customize it as needed.
 
-- SDK functionality is grouped into namespaces, accessible through properties on the `WeDoBooksSDK` singleton.  
-  Current namespaces include:  
-  `bookOperations`, `storageOperations`, `userOperations`, `localization`, `style`, `images`, and `easyAccess`.
+- SDK functionality is grouped into namespaces on `WeDoBooksSdk`.  
+  In this sample app, the main namespaces are:  
+  `bookOperations`, `storageOperations`, `userOperations`, `localization`, `styling`, `images`, and `easyAccess`.
 
 - A user must be signed in to perform book operations.  
-  This can be checked using `userOperations.currentUserId`, or by observing the `currentUserIdFlow`.
+  This can be checked by observing `userOperations.currentUserIdFlow`.
 
 - If no user is signed in, the sample app presents a login screen.  
   Tapping the login button will log in with the demo user ID specified in [`local.properties`](https://github.com/wedobooks/wedobooks-sdk-android-sample#localproperties).
 
 - Once signed in, books can be checked out and opened via the `bookOperations` namespace.
 
-- To show a custom loading screen while pages load, use `style.setLoadingSVG()` with the entire SVG string as input:  
+- To show a custom loading screen while pages load, use `styling.setLoadingSVG()` with the entire SVG string as input:  
   ```kotlin
-  WeDoBooksSDK.styling.setLoadingSVG("<svg>...</svg>")
+  WeDoBooksSdk.styling.setLoadingSVG("<svg>...</svg>")
   ```
 
 ---
@@ -115,14 +115,14 @@ Annotations such as `EbookStringKey` and `AudioPlayerIconKey` are available to i
 Example:
 
 ```kotlin
-WeDoBooksSDK.images.changeAudioPlayerIcons(
+WeDoBooksSdk.images.changeAudioPlayerIcons(
     mapOf(
         AudioPlayerIconKey.PLAY to R.drawable.ic_play,
         AudioPlayerIconKey.PAUSE to R.drawable.ic_pause
     )
 )
 
-WeDoBooksSDK.localization.setEbookLocalization(
+WeDoBooksSdk.localization.setEbookLocalization(
     mapOf(
         EbookStringKey.BUTTONS_CANCEL to R.string.general_cancel
     )

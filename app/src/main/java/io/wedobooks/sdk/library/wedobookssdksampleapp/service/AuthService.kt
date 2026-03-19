@@ -1,10 +1,12 @@
 package io.wedobooks.sdk.library.wedobookssdksampleapp.service
 
 import android.util.Log
-import io.wedobooks.sdk.WeDoBooksSDK
+import io.wedobooks.sdk.WeDoBooksSdk
 import io.wedobooks.sdk.library.wedobookssdksampleapp.BuildConfig
 import io.wedobooks.sdk.library.wedobookssdksampleapp.util.await
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
@@ -20,7 +22,8 @@ class AuthService private constructor() {
         val instance = AuthService()
     }
     private val client = OkHttpClient()
-    val currentUser = WeDoBooksSDK.userOperations.currentUserIdFlow
+    private val _currentUser = MutableStateFlow(WeDoBooksSdk.userOperations.currentUserId)
+    val currentUser = _currentUser.asStateFlow()
 
     suspend fun getToken(uid: String): String? {
         return withContext(Dispatchers.IO) {
@@ -46,11 +49,19 @@ class AuthService private constructor() {
 
     suspend fun tokenLogin(token: String) {
         withContext(Dispatchers.IO) {
-            WeDoBooksSDK.userOperations.signInWithToken(token)
+            val result = WeDoBooksSdk.userOperations.signInWithToken(token)
+            result.onSuccess { isSignedIn ->
+                _currentUser.value = if (isSignedIn) {
+                    WeDoBooksSdk.userOperations.currentUserId
+                } else {
+                    null
+                }
+            }
         }
     }
 
     fun logout() {
-        WeDoBooksSDK.userOperations.signOut()
+        WeDoBooksSdk.userOperations.signOut()
+        _currentUser.value = null
     }
 }
