@@ -20,7 +20,7 @@ class SampleApplication : Application() {
                 readerApiKey = BuildConfig.READER_API_KEY,
                 readerApiSecret = BuildConfig.READER_API_SECRET,
                 useInternalProgressService = false,
-                sdkMode = SdkMode.Streaming,
+                sdkMode = // SdkMode.Library or SdkMode.Streaming,
             ),
             themeConfig = WdbThemeConfiguration
                 .builder()
