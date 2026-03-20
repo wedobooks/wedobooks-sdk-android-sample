@@ -22,7 +22,7 @@ class MainScreenViewModel: ViewModel() {
     suspend fun getCheckout(bookType: MaterialType): Checkout? {
         val isbn = when(bookType) {
             MaterialType.Audiobook -> "TODO" // Fill in isbn from your catalog
-            MaterialType.Ebook -> "TODO" // Fill in isbn from your cagalog
+            MaterialType.Ebook -> "TODO" // Fill in isbn from your catalog
             else -> null
         }
         val loader = when (bookType) {
