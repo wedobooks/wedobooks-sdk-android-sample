@@ -42,6 +42,7 @@ import io.wedobooks.sdk.library.wedobookssdksampleapp.ui.MainScreen
 import io.wedobooks.sdk.library.wedobookssdksampleapp.ui.StatsScreen
 import io.wedobooks.sdk.library.wedobookssdksampleapp.ui.theme.WeDoBooksSDKSampleAppTheme
 import io.wedobooks.sdk.models.Checkout
+import kotlinx.coroutines.flow.emptyFlow
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -187,11 +188,20 @@ fun EasyAccess(
     onEasyAccessClick: (Checkout) -> Unit,
 ) {
     val ctx = LocalContext.current.applicationContext
-    // very important to use lastOpenedBookFlow like this or in a ViewModel you don't want it to infinitely recompose
+    /*
+    * very important to use lastOpenedBookFlow like this or in a ViewModel you don't want it to infinitely recompose
+    * The bookProgess and EasyAccess Progress only works if you use useInternalProgressService = true in WdbConfiguration
+    * Ebooks works regardless of settings
+    */
+
     val easyAccessState by remember { WeDoBooksSdk.easyAccess.lastOpenedBookFlow(ctx) }.collectAsState(
         null
     )
     val currentRoute = navController.currentBackStackEntryAsState()
+    val materialId = remember(easyAccessState) { easyAccessState?.checkout?.materialId }
+    val bookProgress by remember(materialId) {
+        materialId?.let { WeDoBooksSdk.bookOperations.bookProgressFlow(it) } ?: emptyFlow()
+    }.collectAsState(null)
 
     currentRoute.value?.destination?.route?.let {
         if (Routes.main == it) {
@@ -219,7 +229,8 @@ fun EasyAccess(
                             trackColor = MaterialTheme.colorScheme.outline,
                             color = MaterialTheme.colorScheme.primary,
                             progress = {
-                                easyAccessState?.progress?.toFloat() ?: 0f
+                                // Choose from easyAccessState or bookProgress
+                                bookProgress?.progress?.toFloat() ?: 0f
                             }
                         )
 

@@ -112,6 +112,7 @@ class WDBAudioPlayerSessionService : MediaLibraryService() {
             override val publisher: String = ""
             override val start: Instant = Instant.EPOCH
             override val end: Instant = Instant.EPOCH
+            override val lastOpenedAt: Instant? = null
         }
     }
 
