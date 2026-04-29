@@ -1,6 +1,7 @@
 package io.wedobooks.sdk.library.wedobookssdksampleapp
 
 import android.os.Bundle
+import android.util.Log
 import android.view.ActionMode
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -18,6 +19,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -103,10 +105,33 @@ class MainActivity : ComponentActivity() {
                             )
                         }
                         composable(route = Routes.reader) {
-                            // you can set your own coverUrl else set to null if you want to use coverUrl provided by WeDoBooks
+                            // Listen to progress in the book
+                            val sessionProgress by remember {
+                                WeDoBooksSdk.reader.sessionProgressFlow
+                            }.collectAsState(initial = null)
+                            LaunchedEffect(sessionProgress) {
+                                Log.d("MainActivity", "sessionProgress: $sessionProgress")
+                            }
+                            /*
+                                When book is loaded use goTo like this, if your progress was saved in percentage
+                                otherwise use initialReaderCfi in BookScreen
+                                this does not require internalProgressConfig.reader = false,
+                            */
+                            val isBookLoaded by remember {
+                                WeDoBooksSdk.reader.bookLoadedFlow
+                            }.collectAsState(false)
+                            LaunchedEffect(isBookLoaded) {
+                                if (isBookLoaded) {
+                                    // can seek to cfi in book as long as book is loaded
+                                    WeDoBooksSdk.reader.goTo(
+                                        WeDoBooksSdk.reader.percentageToCfi(0.5)
+                                    )
+                                }
+                            }
+
                             WeDoBooksSdk.bookOperations.BookScreen(
                                 checkout = checkout,
-                                cover = null,
+                                cover = null, // you can set your own coverUrl else set to null if you want to use coverUrl provided by WeDoBooks
                                 onCloseClick = {
                                     mainNavController.popBackStack()
                                 },
@@ -115,6 +140,7 @@ class MainActivity : ComponentActivity() {
                                 onAudioMinimizeClick = null, // different behavior for minimize else defaults to onCloseClick without stopping audio
                                 viewModelStoreOwner = null, // if you want to save state outside this composable
                                 initialAudioBookProgressMs = null, // used when useInternalProgressService is set to false in WdbConfiguration
+                                initialReaderCfi = null, // used when useInternalProgressService is set to false in WdbConfiguration starts book at a certain cfi
                                 isDarkMode = isDarkMode,
                             )
                         }
@@ -189,11 +215,10 @@ fun EasyAccess(
 ) {
     val ctx = LocalContext.current.applicationContext
     /*
-    * very important to use lastOpenedBookFlow like this or in a ViewModel you don't want it to infinitely recompose
+    * Very important to use lastOpenedBookFlow inside a remember or in a ViewModel you don't want it to infinitely recompose
     * The bookProgess and EasyAccess Progress only works if you use useInternalProgressService = true in WdbConfiguration
     * Ebooks works regardless of settings
     */
-
     val easyAccessState by remember { WeDoBooksSdk.easyAccess.lastOpenedBookFlow(ctx) }.collectAsState(
         null
     )
