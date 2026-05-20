@@ -6,23 +6,31 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import io.wedobooks.sdk.WeDoBooksSdk
 import io.wedobooks.sdk.models.Checkout
-import kotlinx.coroutines.flow.flowOf
+import io.wedobooks.sdk.models.StatData
+import kotlinx.coroutines.flow.Flow
 import java.time.LocalDate
 
 class StatsScreenViewModel(
-    checkout: Checkout?
-): ViewModel() {
-    val statsForCurrentYear  = WeDoBooksSdk.userOperations.totalStats(LocalDate.now().year.toString())
-    val statsForCheckout =  checkout?.let {
-        WeDoBooksSdk.userOperations.totalStats(it)
-    } ?: flowOf(emptyMap())
+    private val checkouts: List<Checkout>,
+) : ViewModel() {
+    val statsForCurrentYear: Flow<Map<String, StatData>> =
+        WeDoBooksSdk.userOperations.totalStats(LocalDate.now().year.toString())
+
+    /**
+     * Per-checkout stats keyed by `checkout.id`. Order matches [checkouts].
+     */
+    val statsByCheckoutId: Map<String, Flow<Map<String, StatData>>> = checkouts
+        .associateBy({ it.id }) { WeDoBooksSdk.userOperations.totalStats(it) }
+
+    /** Convenience: the active checkouts in display order. */
+    val orderedCheckouts: List<Checkout> = checkouts
 
     companion object {
         fun factory(
-            checkout: Checkout?
+            checkouts: List<Checkout>,
         ): ViewModelProvider.Factory = viewModelFactory {
             initializer {
-                StatsScreenViewModel(checkout = checkout)
+                StatsScreenViewModel(checkouts = checkouts)
             }
         }
     }

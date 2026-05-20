@@ -3,12 +3,16 @@ package io.wedobooks.sdk.library.wedobookssdksampleapp.viewmodels
 import android.util.Log
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import io.wedobooks.sdk.WeDoBooksSdk
-import io.wedobooks.sdk.library.wedobookssdksampleapp.service.AuthService
 import io.wedobooks.sdk.models.Checkout
+import io.wedobooks.sdk.models.WdbDownloadStatus
 import io.wedobooks.sdk.models.enums.MaterialType
+import io.wedobooks.sdk.models.enums.WdbDownloadState
+import io.wedobooks.sdk.library.wedobookssdksampleapp.services.AuthService
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 
 private const val TAG = "MainScreenViewModel"
 
@@ -19,19 +23,18 @@ class MainScreenViewModel: ViewModel() {
     val didCheckoutFail = MutableStateFlow(false)
 
     // ask WeDoBooks for isbns for different books
-    suspend fun getCheckout(bookType: MaterialType): Checkout? {
-        val isbn = when(bookType) {
-            MaterialType.Audiobook -> "TODO" // Fill in isbn from your catalog
-            MaterialType.Ebook -> "TODO" // Fill in isbn from your catalog
+    suspend fun getCheckout(materialType: MaterialType): Checkout? {
+        val isbn = when(materialType) {
+            MaterialType.Audiobook -> "TODO: insert audiobook isbn"
+            MaterialType.Ebook -> "TODO: insert ebook isbn"
             else -> null
         }
-        val loader = when (bookType) {
+        val loader = when (materialType) {
             MaterialType.Audiobook ->  isAudioCheckoutLoading
             MaterialType.Ebook ->  isEbookCheckoutLoading
             else -> mutableStateOf(false)
         }
         loader.value = true
-
 
         return isbn?.let {
             try {
@@ -56,5 +59,32 @@ class MainScreenViewModel: ViewModel() {
 
     fun removeStorage() {
         WeDoBooksSdk.storageOperations.removeAll()
+    }
+
+    fun toggleDownload(checkout: Checkout, status: WdbDownloadStatus?) {
+        viewModelScope.launch {
+            val shouldRemove = when (status?.state) {
+                WdbDownloadState.Finished,
+                WdbDownloadState.Paused,
+                WdbDownloadState.Cancelled,
+                WdbDownloadState.Error,
+                -> true
+
+                else -> false
+            }
+            if (shouldRemove) {
+                runCatching {
+                    WeDoBooksSdk.storageOperations.removeBook(checkout.materialId)
+                }.onFailure {
+                    Log.d(TAG, "removeBook err: ${it.message}")
+                }
+            } else {
+                runCatching {
+                    WeDoBooksSdk.storageOperations.downloadBook(checkout)
+                }.onFailure {
+                    Log.d(TAG, "downloadBook err: ${it.message}")
+                }
+            }
+        }
     }
 }

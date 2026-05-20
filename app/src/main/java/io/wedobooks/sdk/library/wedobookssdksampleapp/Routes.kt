@@ -8,4 +8,8 @@ object Routes {
     val login = "login"
     val stats = "stats"
     val downloadedBooks = "downloaded_books"
+    val devices = "devices"
+    val sampleEbook = "sample_ebook"
+    val sampleAudiobook = "sample_audiobook"
+    val headlessSampleAudio = "headless_sample_audio"
 }

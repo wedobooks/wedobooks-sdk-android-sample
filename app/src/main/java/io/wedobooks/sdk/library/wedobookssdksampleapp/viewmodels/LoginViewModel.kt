@@ -3,7 +3,7 @@ package io.wedobooks.sdk.library.wedobookssdksampleapp.viewmodels
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import io.wedobooks.sdk.library.wedobookssdksampleapp.BuildConfig
-import io.wedobooks.sdk.library.wedobookssdksampleapp.service.AuthService
+import io.wedobooks.sdk.library.wedobookssdksampleapp.services.AuthService
 import kotlinx.coroutines.flow.map
 
 class LoginViewModel: ViewModel() {

@@ -1,11 +1,11 @@
-package io.wedobooks.sdk.library.wedobookssdksampleapp.util
+package io.wedobooks.sdk.library.wedobookssdksampleapp.utils
 
 import android.util.Log
 import kotlinx.coroutines.suspendCancellableCoroutine
 import okhttp3.Call
 import okhttp3.Callback
 import okhttp3.Response
-import java.io.IOException
+import okio.IOException
 import kotlin.coroutines.resumeWithException
 
 suspend fun Call.await(): Response = suspendCancellableCoroutine { cont ->

@@ -16,6 +16,8 @@ import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -35,48 +37,51 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import io.wedobooks.sdk.library.wedobookssdksampleapp.viewmodels.StatsScreenViewModel
 import io.wedobooks.sdk.models.Checkout
 import io.wedobooks.sdk.models.StatData
+import kotlinx.coroutines.flow.Flow
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 
-private const val SELECT_DATE_TEXT = "Select Date"
+private const val SELECT_DATE_TEXT = "All time"
 
+/**
+ * @param checkouts All active checkouts whose stats should be paged through.
+ *                  Pass an empty list to show only the year pane.
+ */
 @Composable
 fun StatsScreen(
-    checkout: Checkout?,
-    goBack: () -> Unit,
+    checkouts: List<Checkout>,
 ) {
     val ctx = LocalContext.current
+    // viewModel() caches per-store; key the factory on the checkout ids so
+    // the VM rebuilds when the active checkouts change.
+    val checkoutsKey = remember(checkouts) { checkouts.joinToString(",") { it.id } }
     val vm: StatsScreenViewModel = viewModel(
-        factory = StatsScreenViewModel.factory(checkout)
+        key = "stats-$checkoutsKey",
+        factory = StatsScreenViewModel.factory(checkouts),
     )
-    var selectedDate by remember {
-        mutableStateOf<Date?>(null)
-    }
+    var selectedDate by remember { mutableStateOf<Date?>(null) }
     val formatter by remember {
-        mutableStateOf(
-            SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
-        )
+        mutableStateOf(SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()))
     }
     val selectedDateText by remember(selectedDate) {
         derivedStateOf {
-            selectedDate?.let {
-                formatter.format(it)
-            } ?: SELECT_DATE_TEXT
+            selectedDate?.let { formatter.format(it) } ?: SELECT_DATE_TEXT
+        }
+    }
+    val datePickerLabel by remember(selectedDate) {
+        derivedStateOf {
+            selectedDate?.let { formatter.format(it) } ?: "Filter by date"
         }
     }
 
     val statsForCurrentYear by vm.statsForCurrentYear.collectAsState(emptyMap())
-    val statsForCheckout by vm.statsForCheckout.collectAsState(emptyMap())
 
+    // One page for the year + one page per checkout.
     val pagerState = rememberPagerState(
         initialPage = 0,
-        pageCount = {
-            if (checkout != null) {
-                2
-            } else 1
-        }
+        pageCount = { 1 + vm.orderedCheckouts.size },
     )
 
     fun showDatePickerDialog(
@@ -90,44 +95,35 @@ fun StatsScreen(
             ctx,
             { _, year, monthOfYear, dayOfMonth ->
                 startDateCalendar.set(
-                    /* year = */ year,
-                    /* month = */ monthOfYear,
-                    /* date = */ dayOfMonth,
-                    /* hourOfDay = */ 0,
-                    /* minute = */ 0,
-                    /* second = */ 0,
+                    year, monthOfYear, dayOfMonth, 0, 0, 0,
                 )
-                onSelect(
-                    startDateCalendar.time
-                )
+                onSelect(startDateCalendar.time)
             },
             startDateCalendar.get(Calendar.YEAR),
             startDateCalendar.get(Calendar.MONTH),
-            startDateCalendar.get(Calendar.DAY_OF_MONTH)
+            startDateCalendar.get(Calendar.DAY_OF_MONTH),
         ).apply {
-            datePicker.maxDate = (Date()).time
-            minDate?.time?.let {
-                datePicker.minDate = it
-            }
+            datePicker.maxDate = Date().time
+            minDate?.time?.let { datePicker.minDate = it }
         }.show()
     }
 
-    Column(modifier = Modifier
-        .systemBarsPadding()
-        .fillMaxSize()) {
+    Column(
+        modifier = Modifier
+            .systemBarsPadding()
+            .fillMaxSize(),
+    ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(bottom = 24.dp),
-            horizontalArrangement = Arrangement.Center
+            horizontalArrangement = Arrangement.Center,
         ) {
             Surface(
                 modifier = Modifier
                     .padding(top = 32.dp)
                     .clickable {
-                        showDatePickerDialog {
-                            selectedDate = it
-                        }
+                        showDatePickerDialog { selectedDate = it }
                     },
                 shape = RoundedCornerShape(16.dp),
                 color = MaterialTheme.colorScheme.primary,
@@ -135,42 +131,49 @@ fun StatsScreen(
                 Column(
                     modifier = Modifier.size(width = 200.dp, height = 48.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center
+                    verticalArrangement = Arrangement.Center,
                 ) {
                     Text(
-                        modifier = Modifier,
-                        text = selectedDateText,
-                        color = MaterialTheme.colorScheme.onPrimary
+                        text = datePickerLabel,
+                        color = MaterialTheme.colorScheme.onPrimary,
                     )
                 }
             }
         }
-        HorizontalPager(
-            state = pagerState
-        ) {
-            when (it) {
-                0 -> {
-                    StatsView(
-                        title = if (selectedDate != null) "stats for $selectedDateText" else "stats for 2025",
-                        selectedDate = selectedDate,
-                        selectedDateText = selectedDateText,
-                        stats = statsForCurrentYear
-                    )
+
+        HorizontalPager(state = pagerState) { page ->
+            val year = java.time.LocalDate.now().year
+            if (page == 0) {
+                StatsView(
+                    title = "Year — $year",
+                    subtitle = if (selectedDate != null) {
+                        "on $selectedDateText"
+                    } else "all time",
+                    selectedDate = selectedDate,
+                    selectedDateText = selectedDateText,
+                    stats = statsForCurrentYear,
+                )
+            } else {
+                val checkout = vm.orderedCheckouts.getOrNull(page - 1)
+                val flow: Flow<Map<String, StatData>>? = checkout?.let {
+                    vm.statsByCheckoutId[it.id]
                 }
-                1 -> {
-                    StatsView(
-                        title = "stats for chosen checkout",
-                        selectedDate = selectedDate,
-                        selectedDateText = selectedDateText,
-                        stats = statsForCheckout
-                    )
-                }
-                else -> Unit
+                val stats by (flow ?: emptyMapFlow()).collectAsState(emptyMap())
+                StatsView(
+                    title = checkout?.title?.takeIf { it.isNotBlank() } ?: "Untitled checkout",
+                    subtitle = if (selectedDate != null) {
+                        "on $selectedDateText"
+                    } else "all time",
+                    selectedDate = selectedDate,
+                    selectedDateText = selectedDateText,
+                    stats = stats,
+                )
             }
         }
+
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.Center
+            horizontalArrangement = Arrangement.Center,
         ) {
             repeat(pagerState.pageCount) {
                 val isSelected = pagerState.currentPage == it
@@ -182,42 +185,23 @@ fun StatsScreen(
                             color = if (isSelected) {
                                 MaterialTheme.colorScheme.primary
                             } else MaterialTheme.colorScheme.outline,
-                            shape = CircleShape
-                        )
-                )
-            }
-        }
-        Surface(
-            modifier = Modifier
-                .padding(top = 16.dp)
-                .align(Alignment.CenterHorizontally)
-                .clickable {
-                    goBack()
-                },
-            shape = RoundedCornerShape(16.dp),
-            color = MaterialTheme.colorScheme.secondary,
-        ) {
-            Column(
-                modifier = Modifier.size(width = 200.dp, height = 48.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center
-            ) {
-                Text(
-                    color = MaterialTheme.colorScheme.onSecondary,
-                    modifier = Modifier,
-                    text = "back"
+                            shape = CircleShape,
+                        ),
                 )
             }
         }
     }
 }
 
+private fun emptyMapFlow(): Flow<Map<String, StatData>> = kotlinx.coroutines.flow.flowOf(emptyMap())
+
 @Composable
-private fun StatsView(
+internal fun StatsView(
     title: String,
+    subtitle: String,
     selectedDate: Date?,
     selectedDateText: String,
-    stats: Map<String, StatData>
+    stats: Map<String, StatData>,
 ) {
     val selectedStat by remember(stats, selectedDate) {
         derivedStateOf {
@@ -248,59 +232,123 @@ private fun StatsView(
         }
     }
     Column(
-        modifier = Modifier.padding(horizontal = 24.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 4.dp),
     ) {
-        Text(
-            modifier = Modifier.padding(vertical = 16.dp).align(Alignment.CenterHorizontally),
-            text = title,
-            fontSize = 24.sp
-        )
-        SpacedToEndText(
-            lhsText = "Audio Minutes",
-            rhsText = selectedStat.audioMinutes.toString()
-        )
-        SpacedToEndText(
-            lhsText = "Ebook Minutes",
-            rhsText = selectedStat.ebookMinutes.toString()
-        )
-        SpacedToEndText(
-            lhsText = "Audio Seconds",
-            rhsText = selectedStat.audioSeconds.toString()
-        )
-        SpacedToEndText(
-            lhsText = "Ebook Seconds",
-            rhsText = selectedStat.ebookSeconds.toString()
-        )
-        SpacedToEndText(
-            lhsText = "Words Read",
-            rhsText = selectedStat.wordsRead.toString()
-        )
-        SpacedToEndText(
-            lhsText = "Minutes Read",
-            rhsText = selectedStat.minutesRead.toString()
-        )
-        SpacedToEndText(
-            lhsText = "Seconds Read",
-            rhsText = selectedStat.secondsRead.toString()
-        )
+        ElevatedCard(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.elevatedCardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceVariant,
+            ),
+            elevation = CardDefaults.elevatedCardElevation(defaultElevation = 2.dp),
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp, vertical = 18.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                Column(
+                    modifier = Modifier
+                        .padding(bottom = 6.dp)
+                        .fillMaxWidth(),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    Text(
+                        text = title,
+                        fontSize = 22.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Text(
+                        text = subtitle,
+                        fontSize = 13.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                    )
+                }
+                StatRow(
+                    label = "Audio listened",
+                    primary = formatDuration(selectedStat.audioSeconds),
+                    secondary = "${selectedStat.audioSeconds} s",
+                )
+                StatRow(
+                    label = "Ebook read",
+                    primary = formatDuration(selectedStat.ebookSeconds),
+                    secondary = "${selectedStat.ebookSeconds} s",
+                )
+                StatRow(
+                    label = "Total time",
+                    primary = formatDuration(selectedStat.secondsRead),
+                    secondary = "${selectedStat.secondsRead} s",
+                )
+                StatRow(
+                    label = "Words read",
+                    primary = formatThousands(selectedStat.wordsRead),
+                    secondary = null,
+                )
+            }
+        }
     }
 }
 
 @Composable
-private fun SpacedToEndText(
-    lhsText: String,
-    rhsText: String,
+private fun StatRow(
+    label: String,
+    primary: String,
+    secondary: String?,
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween
+        horizontalArrangement = Arrangement.SpaceBetween,
     ) {
         Text(
-            text = lhsText
+            text = label,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
-        Text(
-            text = rhsText
-        )
+        Column(horizontalAlignment = Alignment.End) {
+            Text(
+                text = primary,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            if (secondary != null) {
+                Text(
+                    text = secondary,
+                    fontSize = 11.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                )
+            }
+        }
     }
+}
+
+/**
+ * Formats a duration in seconds as "Hh Mm Ss", dropping leading zero units.
+ * Examples: `0` → `"0s"`, `42` → `"42s"`, `125` → `"2m 5s"`, `3725` → `"1h 2m 5s"`.
+ */
+private fun formatDuration(totalSeconds: Int): String {
+    if (totalSeconds <= 0) return "0s"
+    val hours = totalSeconds / 3600
+    val minutes = (totalSeconds % 3600) / 60
+    val seconds = totalSeconds % 60
+    return buildString {
+        if (hours > 0) append("${hours}h ")
+        if (hours > 0 || minutes > 0) append("${minutes}m ")
+        append("${seconds}s")
+    }.trim()
+}
+
+/** `1234` → `"1,234"`. Locale-independent thousands separator. */
+private fun formatThousands(value: Int): String {
+    val s = value.toString()
+    if (s.length <= 3) return s
+    val negative = s.startsWith('-')
+    val digits = if (negative) s.drop(1) else s
+    val sb = StringBuilder()
+    val mod = digits.length % 3
+    digits.forEachIndexed { i, c ->
+        if (i != 0 && i % 3 == mod) sb.append(',')
+        sb.append(c)
+    }
+    return if (negative) "-$sb" else sb.toString()
 }
