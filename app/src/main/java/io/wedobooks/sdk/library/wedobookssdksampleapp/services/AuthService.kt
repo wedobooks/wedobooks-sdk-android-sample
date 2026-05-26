@@ -1,9 +1,9 @@
-package io.wedobooks.sdk.library.wedobookssdksampleapp.service
+package io.wedobooks.sdk.library.wedobookssdksampleapp.services
 
 import android.util.Log
 import io.wedobooks.sdk.WeDoBooksSdk
 import io.wedobooks.sdk.library.wedobookssdksampleapp.BuildConfig
-import io.wedobooks.sdk.library.wedobookssdksampleapp.util.await
+import io.wedobooks.sdk.library.wedobookssdksampleapp.utils.await
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -15,7 +15,6 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONObject
 
 private const val TAG = "AuthService"
-
 class AuthService private constructor() {
 
     companion object {
@@ -47,8 +46,8 @@ class AuthService private constructor() {
         }
     }
 
-    suspend fun tokenLogin(token: String) {
-        withContext(Dispatchers.IO) {
+    suspend fun tokenLogin(token: String): Result<Boolean> {
+        return withContext(Dispatchers.IO) {
             val result = WeDoBooksSdk.userOperations.signInWithToken(token)
             result.onSuccess { isSignedIn ->
                 _currentUser.value = if (isSignedIn) {
@@ -57,6 +56,7 @@ class AuthService private constructor() {
                     null
                 }
             }
+            result
         }
     }
 

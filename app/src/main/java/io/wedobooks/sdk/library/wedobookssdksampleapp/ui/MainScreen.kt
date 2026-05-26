@@ -5,19 +5,30 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.requiredHeight
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.systemBarsPadding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListScope
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ElevatedCard
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -26,147 +37,542 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import io.wedobooks.sdk.WeDoBooksSdk
 import io.wedobooks.sdk.library.wedobookssdksampleapp.viewmodels.MainScreenViewModel
 import io.wedobooks.sdk.models.Checkout
+import io.wedobooks.sdk.models.WdbDownloadStatus
 import io.wedobooks.sdk.models.enums.MaterialType
+import io.wedobooks.sdk.models.enums.WdbDownloadState
 import kotlinx.coroutines.launch
 
+private data class TestMaterial(
+    val isbn: String,
+    val type: MaterialType,
+    val label: String,
+)
+
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainScreen(
     setCheckout: (Checkout) -> Unit,
     goToReader: () -> Unit,
     goToHeadlessAudio: () -> Unit,
-    goToWDBAudioPlayer: () -> Unit,
+    goToWdbAudioPlayer: () -> Unit,
     goToLogin: () -> Unit,
-    goToStats: () -> Unit,
     goToDownloadedBooks: () -> Unit,
+    goToDevices: () -> Unit,
+    goToSampleEbook: () -> Unit,
+    goToSampleAudiobook: () -> Unit,
+    goToHeadlessSampleAudio: () -> Unit,
     toggleDarkMode: () -> Unit,
 ) {
     val vm: MainScreenViewModel = viewModel()
+    val testMaterials = remember {
+        listOf(
+            TestMaterial(
+                isbn = "TODO: insert ebook isbn",
+                type = MaterialType.Ebook,
+                label = "Ebook",
+            ),
+            TestMaterial(
+                isbn = "TODO: insert audiobook isbn",
+                type = MaterialType.Audiobook,
+                label = "Audiobook",
+            ),
+        )
+    }
+
+    val tabs = remember { listOf("Checkouts", "Stats", "Settings") }
+    var selectedTab by remember { mutableIntStateOf(0) }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(color = MaterialTheme.colorScheme.background)
+            .systemBarsPadding(),
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 12.dp, bottom = 4.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Text(
+                text = "WeDoBooks SDK Sample",
+                color = MaterialTheme.colorScheme.onBackground,
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.SemiBold,
+            )
+        }
+
+        PrimaryTabRow(selectedTabIndex = selectedTab) {
+            tabs.forEachIndexed { index, label ->
+                Tab(
+                    selected = selectedTab == index,
+                    onClick = { selectedTab = index },
+                    text = { Text(label) },
+                )
+            }
+        }
+
+        Box(modifier = Modifier.fillMaxSize()) {
+            when (selectedTab) {
+                0 -> CheckoutsTab(
+                    vm = vm,
+                    testMaterials = testMaterials,
+                    setCheckout = setCheckout,
+                    goToReader = goToReader,
+                    goToHeadlessAudio = goToHeadlessAudio,
+                    goToWdbAudioPlayer = goToWdbAudioPlayer,
+                    goToSampleEbook = goToSampleEbook,
+                    goToSampleAudiobook = goToSampleAudiobook,
+                    goToHeadlessSampleAudio = goToHeadlessSampleAudio,
+                )
+
+                1 -> StatsTab()
+
+                2 -> SettingsTab(
+                    vm = vm,
+                    goToLogin = goToLogin,
+                    goToDownloadedBooks = goToDownloadedBooks,
+                    goToDevices = goToDevices,
+                    toggleDarkMode = toggleDarkMode,
+                )
+            }
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Checkouts tab
+// ---------------------------------------------------------------------------
+
+@Composable
+private fun CheckoutsTab(
+    vm: MainScreenViewModel,
+    testMaterials: List<TestMaterial>,
+    setCheckout: (Checkout) -> Unit,
+    goToReader: () -> Unit,
+    goToHeadlessAudio: () -> Unit,
+    goToWdbAudioPlayer: () -> Unit,
+    goToSampleEbook: () -> Unit,
+    goToSampleAudiobook: () -> Unit,
+    goToHeadlessSampleAudio: () -> Unit,
+) {
     val coroutineScope = rememberCoroutineScope()
+    val allCheckouts by remember { WeDoBooksSdk.bookOperations.allCheckoutsFlow() }
+        .collectAsState(initial = emptyList())
+    val bookDownloads by WeDoBooksSdk.storageOperations.bookDownloadsFlow.collectAsState(
+        initial = emptyMap()
+    )
 
     val isEbookLoading by vm.isEbookCheckoutLoading
     val isAudioBookLoading by vm.isAudioCheckoutLoading
 
-    var selectedCheckout by remember {
-        mutableStateOf<Checkout?>(null)
-    }
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        testMaterials.forEach { material ->
+            item(key = "material-${material.isbn}") {
+                val checkout = allCheckouts.firstOrNull { it.materialId == material.isbn }
+                val isLoading = when (material.type) {
+                    MaterialType.Audiobook -> isAudioBookLoading
+                    MaterialType.Ebook -> isEbookLoading
+                }
+                val downloadStatus = bookDownloads[material.isbn]
 
-    LaunchedEffect(selectedCheckout) {
-        selectedCheckout?.let {
-            setCheckout(it)
+                // Optimistic flag for the download button. Flipped to true the
+                // moment the user clicks Download / Remove so the UI changes
+                // immediately, instead of waiting the ~hundreds of ms it takes
+                // for `bookDownloadsFlow` to emit the new state.
+                //
+                // We snapshot the pre-click state and clear the flag as soon
+                // as the real state diverges, handing control back to the
+                // SDK-driven status.
+                var isTogglePending by remember(material.isbn) { mutableStateOf(false) }
+                var stateAtClick: WdbDownloadState? by remember(material.isbn) { mutableStateOf(null) }
+                LaunchedEffect(downloadStatus?.state) {
+                    if (isTogglePending && downloadStatus?.state != stateAtClick) {
+                        isTogglePending = false
+                    }
+                }
+
+                MaterialCard(
+                    material = material,
+                    checkout = checkout,
+                    isLoading = isLoading,
+                    downloadStatus = downloadStatus,
+                    isTogglePending = isTogglePending,
+                    onRequestCheckout = {
+                        coroutineScope.launch {
+                            vm.getCheckout(material.type)
+                        }
+                    },
+                    onOpen = {
+                        checkout?.let {
+                            setCheckout(it)
+                            goToReader()
+                        }
+                    },
+                    onHeadlessAudio = {
+                        checkout?.let {
+                            setCheckout(it)
+                            goToHeadlessAudio()
+                        }
+                    },
+                    onWdbAudioPlayer = {
+                        checkout?.let {
+                            setCheckout(it)
+                            goToWdbAudioPlayer()
+                        }
+                    },
+                    onOpenSample = when (material.type) {
+                        MaterialType.Ebook -> goToSampleEbook
+                        MaterialType.Audiobook -> goToSampleAudiobook
+                    },
+                    onHeadlessSample = if (material.type == MaterialType.Audiobook) {
+                        goToHeadlessSampleAudio
+                    } else null,
+                    onToggleDownload = {
+                        checkout?.let {
+                            stateAtClick = downloadStatus?.state
+                            isTogglePending = true
+                            vm.toggleDownload(it, downloadStatus)
+                        }
+                    },
+                )
+            }
         }
     }
+}
 
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(color = MaterialTheme.colorScheme.background),
+@Composable
+private fun MaterialCard(
+    material: TestMaterial,
+    checkout: Checkout?,
+    isLoading: Boolean,
+    downloadStatus: WdbDownloadStatus?,
+    isTogglePending: Boolean,
+    onRequestCheckout: () -> Unit,
+    onOpen: () -> Unit,
+    onHeadlessAudio: () -> Unit,
+    onWdbAudioPlayer: () -> Unit,
+    onOpenSample: () -> Unit,
+    /** Optional headless-sample button (only audiobooks expose this in the SDK). */
+    onHeadlessSample: (() -> Unit)?,
+    onToggleDownload: () -> Unit,
+) {
+    val downloadUiState = downloadStatus.toDownloadButtonState(
+        hasSelectedCheckout = checkout != null,
+        isTogglePending = isTogglePending,
+    )
+    ElevatedCard(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.elevatedCardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant,
+        ),
+        elevation = CardDefaults.elevatedCardElevation(
+            defaultElevation = 2.dp,
+        ),
     ) {
         Column(
             modifier = Modifier
-                .align(Alignment.Center)
-                .fillMaxWidth(),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 14.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            CustomButton(
-                title = "Audio Book",
-                selectedTitle = "reset",
-                color = MaterialTheme.colorScheme.primary,
-                onClick = {
-                    if (selectedCheckout?.type == MaterialType.Audiobook) {
-                        selectedCheckout = null
-                    } else {
-                        coroutineScope.launch {
-                            vm.getCheckout(MaterialType.Audiobook)?.let {
-                                selectedCheckout = it
-                            }
-                        }
+            // -- Header --------------------------------------------------------
+            Column(modifier = Modifier.fillMaxWidth()) {
+                Text(
+                    text = material.label,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                )
+                Text(
+                    text = "ISBN ${material.isbn}",
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                    style = MaterialTheme.typography.bodySmall,
+                )
+            }
+            // -- Status -------------------------------------------------------
+            if (checkout != null) {
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    Text(
+                        text = checkout.title.ifBlank { "Untitled" },
+                        color = MaterialTheme.colorScheme.primary,
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                    val authors = checkout.author.joinToString(", ")
+                    if (authors.isNotBlank()) {
+                        Text(
+                            text = authors,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                            style = MaterialTheme.typography.labelSmall,
+                        )
                     }
-
-                },
-                isLoading = isAudioBookLoading,
-                isSelected = selectedCheckout?.type == MaterialType.Audiobook
-            )
-
-            CustomButton(
-                title = "EBook",
-                selectedTitle = "reset",
-                color = MaterialTheme.colorScheme.primary,
-                onClick = {
-                    if (selectedCheckout?.type == MaterialType.Ebook) {
-                        selectedCheckout = null
-                    } else {
-                        coroutineScope.launch {
-                            vm.getCheckout(MaterialType.Ebook)?.let {
-                                selectedCheckout = it
-                            }
-                        }
-                    }
-                },
-                isLoading = isEbookLoading,
-                isSelected = selectedCheckout?.type == MaterialType.Ebook
-            )
-
-            CustomButton(
-                title = "To Reader",
-                onClick = goToReader,
-                enabled = selectedCheckout != null
-            )
-
-            CustomButton(
-                title = "To Headless Audio",
-                onClick = goToHeadlessAudio,
-                enabled = selectedCheckout?.type == MaterialType.Audiobook
-            )
-
-            CustomButton(
-                title = "To WdbAudioPlayer",
-                onClick = goToWDBAudioPlayer,
-                enabled = selectedCheckout?.type == MaterialType.Audiobook
-            )
-
-            CustomButton(
-                title = "To Stats",
-                onClick = goToStats
-            )
-
-            CustomButton(
-                title = "Downloaded List",
-                onClick = goToDownloadedBooks
-            )
-
-            CustomButton(
-                title = "Stop Audio",
-                onClick = {
-                    vm.stopAudio()
                 }
-            )
-            CustomButton(
-                title = "Log out",
-                color = MaterialTheme.colorScheme.secondary,
-                textColor = MaterialTheme.colorScheme.onSecondary,
-                onClick = {
-                    goToLogin()
-                    vm.logout()
+            } else {
+                Text(
+                    text = "Not checked out yet",
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                    style = MaterialTheme.typography.labelMedium,
+                )
+            }
+
+            // -- Checkout actions ---------------------------------------------
+            CardSectionHeader(title = "Checkout")
+            if (checkout == null) {
+                CustomButton(
+                    title = "Request checkout",
+                    isLoading = isLoading,
+                    onClick = onRequestCheckout,
+                )
+            } else {
+                val openLabel = when (material.type) {
+                    MaterialType.Audiobook -> "Play (SDK player)"
+                    MaterialType.Ebook -> "Read (SDK reader)"
                 }
-            )
-            CustomButton(
-                title = "Reset downloads",
-                color = MaterialTheme.colorScheme.primary,
-                onClick = {
-                    vm.removeStorage()
+                CustomButton(title = openLabel, onClick = onOpen)
+                if (material.type == MaterialType.Audiobook) {
+                    CustomButton(title = "Play (headless · custom UI)", onClick = onHeadlessAudio)
+                    CustomButton(title = "Play (Media3 builder)", onClick = onWdbAudioPlayer)
                 }
-            )
-            CustomButton(
-                title = "Toggle Dark Mode",
-                color = MaterialTheme.colorScheme.primary,
-                onClick = toggleDarkMode
-            )
+                CustomButton(
+                    title = downloadUiState.title,
+                    enabled = downloadUiState.enabled,
+                    onClick = onToggleDownload,
+                )
+            }
+
+            // -- Sample actions (no checkout needed) ---------------------------
+            CardSectionHeader(title = "Sample")
+            val sampleLabel = when (material.type) {
+                MaterialType.Audiobook -> "Play sample (SDK player)"
+                MaterialType.Ebook -> "Read sample (SDK reader)"
+            }
+            CustomButton(title = sampleLabel, onClick = onOpenSample)
+            if (onHeadlessSample != null) {
+                CustomButton(
+                    title = "Play sample (headless · custom UI)",
+                    onClick = onHeadlessSample,
+                )
+            }
         }
+    }
+}
+
+@Composable
+private fun CardSectionHeader(title: String) {
+    Text(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 4.dp),
+        text = title.uppercase(),
+        color = MaterialTheme.colorScheme.primary,
+        style = MaterialTheme.typography.labelSmall,
+        fontWeight = FontWeight.SemiBold,
+    )
+}
+
+// ---------------------------------------------------------------------------
+// Stats tab
+// ---------------------------------------------------------------------------
+
+@Composable
+private fun StatsTab() {
+    val allCheckouts by remember { WeDoBooksSdk.bookOperations.allCheckoutsFlow() }
+        .collectAsState(initial = emptyList())
+    // StatsScreen now pages through one stats pane per checkout (after the
+    // year pane), so all active checkouts are shown.
+    StatsScreen(checkouts = allCheckouts)
+}
+
+// ---------------------------------------------------------------------------
+// Settings tab
+// ---------------------------------------------------------------------------
+
+@Composable
+private fun SettingsTab(
+    vm: MainScreenViewModel,
+    goToLogin: () -> Unit,
+    goToDownloadedBooks: () -> Unit,
+    goToDevices: () -> Unit,
+    toggleDarkMode: () -> Unit,
+) {
+    fun garbageCollection() {
+        System.gc()
+        System.runFinalization()
+    }
+
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        // Storage — downloaded books + bulk clear.
+        section("Storage") {
+            item {
+                CustomButton(
+                    title = "Downloaded books",
+                    onClick = goToDownloadedBooks,
+                )
+            }
+            item {
+                CustomButton(
+                    title = "Clear all downloads",
+                    onClick = { vm.removeStorage() },
+                )
+            }
+        }
+
+        // Devices — list and manage SDK device sessions.
+        section("Devices") {
+            item {
+                CustomButton(
+                    title = "Manage devices",
+                    onClick = goToDevices,
+                )
+            }
+        }
+
+        // Playback — runtime audio control independent of the active screen.
+        section("Playback") {
+            item {
+                CustomButton(
+                    title = "Stop audio playback",
+                    onClick = { vm.stopAudio() },
+                )
+            }
+        }
+
+        // Appearance — visual settings.
+        section("Appearance") {
+            item {
+                CustomButton(
+                    title = "Toggle dark mode",
+                    onClick = toggleDarkMode,
+                )
+            }
+        }
+
+        // Debug — internal diagnostics; safe to ignore in normal use.
+        section("Debug") {
+            item {
+                CustomButton(
+                    title = "Force garbage collection",
+                    onClick = ::garbageCollection,
+                )
+            }
+        }
+
+        // Account — destructive action lives at the bottom by convention.
+        section("Account") {
+            item {
+                CustomButton(
+                    title = "Sign out",
+                    color = MaterialTheme.colorScheme.secondary,
+                    textColor = MaterialTheme.colorScheme.onSecondary,
+                    onClick = {
+                        goToLogin()
+                        vm.logout()
+                    },
+                )
+            }
+        }
+    }
+}
+
+private fun LazyListScope.section(
+    title: String,
+    content: LazyListScope.() -> Unit,
+) {
+    item { SectionHeader(title = title) }
+    content()
+}
+
+@Composable
+private fun SectionHeader(title: String) {
+    Text(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 12.dp, bottom = 4.dp),
+        text = title.uppercase(),
+        color = MaterialTheme.colorScheme.primary,
+        style = MaterialTheme.typography.labelMedium,
+        fontWeight = FontWeight.SemiBold,
+    )
+}
+
+// ---------------------------------------------------------------------------
+// Shared UI: download button state + CustomButton + Spinner
+// ---------------------------------------------------------------------------
+
+private data class DownloadButtonState(
+    val title: String,
+    val enabled: Boolean,
+)
+
+private fun WdbDownloadStatus?.toDownloadButtonState(
+    hasSelectedCheckout: Boolean,
+    isTogglePending: Boolean = false,
+): DownloadButtonState {
+    if (!hasSelectedCheckout) {
+        return DownloadButtonState(
+            title = "Download",
+            enabled = false,
+        )
+    }
+    if (isTogglePending) {
+        // Optimistic feedback while we wait for `bookDownloadsFlow` to emit
+        // the new state — pick a label that matches the direction the user
+        // just chose so they get immediate, accurate feedback.
+        val title = when (this?.state) {
+            WdbDownloadState.Paused,
+            WdbDownloadState.Cancelled,
+            WdbDownloadState.Finished,
+            WdbDownloadState.Error,
+            -> "Removing…"
+
+            else -> "Starting download…"
+        }
+        return DownloadButtonState(title = title, enabled = false)
+    }
+    return when (this?.state) {
+        WdbDownloadState.Downloading,
+        WdbDownloadState.Waiting,
+        -> DownloadButtonState(
+            title = "Downloading ${(progress * 100).toInt().coerceIn(0, 100)}%",
+            enabled = false,
+        )
+
+        WdbDownloadState.Paused,
+        WdbDownloadState.Cancelled,
+        WdbDownloadState.Finished,
+        -> DownloadButtonState(
+            title = "Remove download",
+            enabled = true,
+        )
+
+        WdbDownloadState.Error -> DownloadButtonState(
+            title = "Download error — retry",
+            enabled = true,
+        )
+
+        else -> DownloadButtonState(
+            title = "Download",
+            enabled = true,
+        )
     }
 }
 
@@ -182,40 +588,44 @@ fun CustomButton(
     isLoading: Boolean = false,
     enabled: Boolean = true,
     isSelected: Boolean = false,
-    onClick: () -> Unit
+    onClick: () -> Unit,
 ) {
     val currentTextColor = if (isSelected) selectedTextColor else textColor
     val currentColor = if (isSelected) selectedColor else color
     Surface(
-        modifier = modifier.clickable(
-            role = Role.Button,
-            enabled = enabled && !isLoading,
-            onClick = onClick
-        ),
+        modifier = modifier
+            .fillMaxWidth()
+            .clickable(
+                role = Role.Button,
+                enabled = enabled && !isLoading,
+                onClick = onClick,
+            ),
         color = if (enabled || isLoading) {
             currentColor
         } else currentColor.copy(alpha = 0.3f),
+        shape = RoundedCornerShape(12.dp),
     ) {
         Box(
             modifier = Modifier
-                .widthIn(200.dp)
+                .fillMaxWidth()
                 .requiredHeight(48.dp),
         ) {
             if (isLoading) {
                 Spinner(
-                    modifier = Modifier
-                        .align(Alignment.Center),
-                    color = currentTextColor
+                    modifier = Modifier.align(Alignment.Center),
+                    color = currentTextColor,
                 )
             } else {
                 Text(
                     modifier = Modifier
                         .align(Alignment.Center)
-                        .padding(horizontal = 8.dp),
+                        .padding(horizontal = 12.dp),
                     text = if (isSelected) selectedTitle.orEmpty().ifEmpty { title } else title,
                     color = if (enabled) {
                         currentTextColor
-                    } else currentTextColor.copy(alpha = 0.3f)
+                    } else currentTextColor.copy(alpha = 0.4f),
+                    textAlign = TextAlign.Center,
+                    style = MaterialTheme.typography.titleSmall,
                 )
             }
         }
@@ -225,8 +635,8 @@ fun CustomButton(
 @Composable
 fun Spinner(modifier: Modifier, color: Color = MaterialTheme.colorScheme.primary) {
     CircularProgressIndicator(
-        modifier = modifier.size(44.dp),
+        modifier = modifier.size(28.dp),
         color = color,
-        strokeWidth = 4.dp
+        strokeWidth = 3.dp,
     )
 }

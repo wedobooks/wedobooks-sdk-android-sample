@@ -1,105 +1,106 @@
 package io.wedobooks.sdk.library.wedobookssdksampleapp.ui
 
 import android.util.Log
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
 import io.wedobooks.sdk.WeDoBooksSdk
 import io.wedobooks.sdk.models.Checkout
 import io.wedobooks.sdk.models.WdbPlayerUiState
 import io.wedobooks.sdk.models.enums.MaterialType
 import io.wedobooks.sdk.models.enums.WdbDownloadState
-import kotlin.math.max
+import io.wedobooks.sdk.library.wedobookssdksampleapp.ui.components.AudioDownloadCard
+import io.wedobooks.sdk.library.wedobookssdksampleapp.ui.components.HeadlessAudioPlayerCallbacks
+import io.wedobooks.sdk.library.wedobookssdksampleapp.ui.components.HeadlessAudioPlayerLayout
+import io.wedobooks.sdk.library.wedobookssdksampleapp.ui.components.HeadlessAudioPlayerUiState
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlin.math.max
 
 private const val STATE_READY = 3
 private const val TAG = "HeadlessAudioScreen"
+private const val SEEK_INTERVAL_MS = 15_000L
 
+/**
+ * Drives [WeDoBooksSdk.headlessAudioPlayer] from a checked-out audiobook and renders
+ * the shared [HeadlessAudioPlayerLayout]. Adds a checkout-specific download +
+ * stop-audio-service card under the transport row.
+ */
 @Composable
 fun HeadlessAudioScreen(
     checkout: Checkout?,
     goBack: () -> Unit,
 ) {
     val coroutineScope = rememberCoroutineScope()
-    var didLoad by remember {
-        mutableStateOf(false)
-    }
-    var isLoading by remember {
-        mutableStateOf(false)
-    }
-    var isPlayerReady by remember {
-        mutableStateOf(false)
-    }
-    var statusMessage by remember {
-        mutableStateOf("Not loaded")
-    }
-    var isPlayingState by remember {
-        mutableStateOf(false)
-    }
-    var currentPositionMsState by remember {
-        mutableStateOf(0L)
-    }
-    var totalDurationMsState by remember {
-        mutableStateOf(0L)
-    }
+
+    var activeCheckout by remember { mutableStateOf(checkout) }
+    var didLoad by remember { mutableStateOf(false) }
+    var isLoading by remember { mutableStateOf(false) }
+    var isPlayerReady by remember { mutableStateOf(false) }
+    var statusMessage by remember { mutableStateOf("Not loaded") }
+    var isPlayingState by remember { mutableStateOf(false) }
+    var currentPositionMsState by remember { mutableLongStateOf(0L) }
+    var totalDurationMsState by remember { mutableLongStateOf(0L) }
+
     val playerUiState by remember { WeDoBooksSdk.headlessAudioPlayer.playerUiState }
         .collectAsState(initial = WdbPlayerUiState())
-    val audioDownloads by remember { WeDoBooksSdk.storageOperations.audioDownloadsFlow }
+    val audioDownloads by remember { WeDoBooksSdk.storageOperations.bookDownloadsFlow }
         .collectAsState(initial = emptyMap())
-    val downloadStatus = checkout?.materialId?.let { audioDownloads[it] }
-    val canDownload = checkout?.type == MaterialType.Audiobook && (
+    val downloadStatus = activeCheckout?.materialId?.let { audioDownloads[it] }
+
+    val canDownload = activeCheckout?.type == MaterialType.Audiobook && (
         downloadStatus == null ||
             downloadStatus.state == WdbDownloadState.NotStarted ||
             downloadStatus.state == WdbDownloadState.Cancelled ||
             downloadStatus.state == WdbDownloadState.Error
         )
-    val canDelete = checkout?.type == MaterialType.Audiobook &&
+    val canDelete = activeCheckout?.type == MaterialType.Audiobook &&
         downloadStatus != null &&
         downloadStatus.state != WdbDownloadState.NotStarted
-    var previousDownloadState by remember(checkout?.id) {
+    val isDownloading = downloadStatus?.state == WdbDownloadState.Downloading ||
+        downloadStatus?.state == WdbDownloadState.Waiting
+
+    val playbackSpeed = playerUiState.playbackSpeed ?: 1f
+    val controlsEnabled = didLoad && isPlayerReady && !isLoading &&
+        activeCheckout?.type == MaterialType.Audiobook
+
+    var previousDownloadState by remember(activeCheckout?.materialId) {
         mutableStateOf<WdbDownloadState?>(null)
     }
 
+    // ---- Effects ---------------------------------------------------------
     LaunchedEffect(checkout?.id) {
-        if (checkout?.type == MaterialType.Audiobook) {
+        activeCheckout = checkout
+    }
+
+    LaunchedEffect(activeCheckout?.materialId) {
+        val selectedCheckout = activeCheckout
+        if (selectedCheckout?.type == MaterialType.Audiobook) {
             isLoading = true
-            statusMessage = "Loading headless player..."
+            statusMessage = "Loading…"
             isPlayerReady = false
             didLoad = try {
                 WeDoBooksSdk.headlessAudioPlayer.loadAudioBook(
-                    checkout = checkout,
+                    checkout = selectedCheckout,
                     cover = null,
-                    initialProgressMs = null
                 )
                 true
             } catch (e: Exception) {
-                statusMessage = "Failed to load player: ${e.message ?: "unknown error"}"
+                statusMessage = "Failed to load: ${e.message ?: "unknown error"}"
                 false
             }
             statusMessage = if (didLoad) {
-                "Controller connected, waiting for STATE_READY..."
+                "Controller connected"
+            } else if (statusMessage.startsWith("Failed to load:")) {
+                statusMessage
             } else {
-                if (statusMessage.startsWith("Failed to load player:")) {
-                    statusMessage
-                } else {
-                    "Failed to load player"
-                }
+                "Failed to load player"
             }
             isLoading = false
         } else {
@@ -109,18 +110,19 @@ fun HeadlessAudioScreen(
         }
     }
 
-    LaunchedEffect(didLoad, checkout?.id, playerUiState) {
-        if (didLoad && checkout?.type == MaterialType.Audiobook) {
-            isPlayingState = (playerUiState.isPlaying == true) || (playerUiState.playWhenReady == true)
+    LaunchedEffect(didLoad, activeCheckout?.materialId, playerUiState) {
+        if (didLoad && activeCheckout?.type == MaterialType.Audiobook) {
+            isPlayingState =
+                (playerUiState.isPlaying == true) || (playerUiState.playWhenReady == true)
             if (playerUiState.playbackState == STATE_READY) {
                 isPlayerReady = true
-                statusMessage = "Player ready"
+                statusMessage = "Ready"
             }
         }
     }
 
-    LaunchedEffect(didLoad, checkout?.id) {
-        while (didLoad && checkout?.type == MaterialType.Audiobook) {
+    LaunchedEffect(didLoad, activeCheckout?.materialId) {
+        while (didLoad && activeCheckout?.type == MaterialType.Audiobook) {
             val updated = try {
                 WeDoBooksSdk.headlessAudioPlayer.withAudioController {
                     currentPositionMsState = it.currentPositionMs
@@ -133,22 +135,22 @@ fun HeadlessAudioScreen(
             }
             if (!updated) {
                 isPlayerReady = false
-                statusMessage = "Waiting for controller..."
+                statusMessage = "Waiting for controller…"
             }
             delay(500)
         }
     }
 
-    LaunchedEffect(downloadStatus?.state, checkout?.id) {
+    LaunchedEffect(downloadStatus?.state, activeCheckout?.materialId) {
         val currentState = downloadStatus?.state
         if (
-            checkout?.type == MaterialType.Audiobook &&
+            activeCheckout?.type == MaterialType.Audiobook &&
             previousDownloadState != WdbDownloadState.Finished &&
             currentState == WdbDownloadState.Finished
         ) {
             try {
                 WeDoBooksSdk.headlessAudioPlayer.restartPlayerFromCurrentPosition()
-                statusMessage = "Download finished, switched to local source"
+                statusMessage = "Switched to local source"
             } catch (e: Exception) {
                 Log.d(TAG, "restartPlayerFromCurrentPosition failed: ${e.message}", e)
             }
@@ -156,151 +158,101 @@ fun HeadlessAudioScreen(
         previousDownloadState = currentState
     }
 
-    Surface(
-        modifier = Modifier.fillMaxSize(),
-        color = MaterialTheme.colorScheme.background,
-    ) {
-        Box(
-            modifier = Modifier.fillMaxSize(),
-            contentAlignment = Alignment.Center
-        ) {
-            Column(
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Text(text = statusMessage, color = MaterialTheme.colorScheme.onBackground)
-                Text(
-                    text = if (isPlayingState) "Playing" else "Paused",
-                    color = MaterialTheme.colorScheme.onBackground
-                )
-                Text(
-                    text = "${formatMinSec(currentPositionMsState)} / ${formatMinSec(totalDurationMsState)}",
-                    color = MaterialTheme.colorScheme.onBackground
-                )
-                Text(
-                    text = "Download: ${
-                        downloadStatus?.let { "${it.state} (${(it.progress * 100).toInt()}%)" } ?: "NotStarted"
-                    }",
-                    color = MaterialTheme.colorScheme.onBackground
-                )
-
-                CustomButton(
-                    title = "Play / Pause",
-                    enabled = checkout?.type == MaterialType.Audiobook && didLoad && isPlayerReady && !isLoading,
-                    onClick = {
-                        coroutineScope.launch {
-                            val toggled = try {
-                                WeDoBooksSdk.headlessAudioPlayer.withAudioController {
-                                    if (it.isPlaying) {
-                                        it.pause()
-                                    } else {
-                                        it.play()
-                                    }
-                                    currentPositionMsState = it.currentPositionMs
-                                    totalDurationMsState = it.totalDurationMs
-                                    true
-                                }
-                            } catch (e: Exception) {
-                                Log.d(TAG, "withAudioController failed on play/pause: ${e.message}", e)
-                                false
-                            }
-                            if (!toggled) {
-                                statusMessage = "Controller unavailable. Retrying..."
-                                isPlayerReady = false
-                            }
-                        }
-                    }
-                )
-
-                CustomButton(
-                    title = "+15 sec",
-                    enabled = checkout?.type == MaterialType.Audiobook && didLoad && isPlayerReady && !isLoading,
-                    onClick = {
-                        coroutineScope.launch {
-                            val sought = try {
-                                WeDoBooksSdk.headlessAudioPlayer.withAudioController {
-                                    val target = max(0L, it.currentPositionMs + 15_000L)
-                                    it.seekTo(target)
-                                    currentPositionMsState = it.currentPositionMs
-                                    totalDurationMsState = it.totalDurationMs
-                                    true
-                                }
-                            } catch (e: Exception) {
-                                Log.d(TAG, "withAudioController failed on seek: ${e.message}", e)
-                                false
-                            }
-                            if (!sought) {
-                                statusMessage = "Controller unavailable. Retrying..."
-                                isPlayerReady = false
-                            }
-                        }
-                    }
-                )
-
-                CustomButton(
-                    title = "Kill",
-                    enabled = checkout?.type == MaterialType.Audiobook,
-                    onClick = {
-                        WeDoBooksSdk.bookOperations.stopAudioPlayer()
-                        goBack()
-                    }
-                )
-
-                CustomButton(
-                    title = "Download",
-                    enabled = canDownload,
-                    onClick = {
-                        checkout?.let { selectedCheckout ->
-                            coroutineScope.launch {
-                                val started = runCatching {
-                                    WeDoBooksSdk.storageOperations.downloadBook(selectedCheckout)
-                                }.onFailure { e ->
-                                    Log.d(TAG, "downloadAudioBook failed: ${e.message}", e)
-                                }.isSuccess
-                                statusMessage = if (started) {
-                                    "Download started"
-                                } else {
-                                    "Download failed"
-                                }
-                            }
-                        }
-                    }
-                )
-
-                CustomButton(
-                    title = "Delete Download",
-                    enabled = canDelete,
-                    onClick = {
-                        checkout?.let { selectedCheckout ->
-                            coroutineScope.launch {
-                                val removed = try {
-                                    WeDoBooksSdk.storageOperations.removeBook(selectedCheckout.materialId)
-                                } catch (e: Exception) {
-                                    Log.d(TAG, "removeAudioBookDownload failed: ${e.message}", e)
-                                    false
-                                }
-                                statusMessage = if (removed) {
-                                    "Download removed"
-                                } else {
-                                    "Remove failed"
-                                }
-                            }
-                        }
-                    }
-                )
-
-                CustomButton(
-                    title = "Go Back",
-                    onClick = goBack
-                )
+    // ---- Controller-bound callbacks --------------------------------------
+    fun withController(name: String, block: (controller: io.wedobooks.sdk.models.WdbAudioController) -> Unit) {
+        coroutineScope.launch {
+            runCatching {
+                WeDoBooksSdk.headlessAudioPlayer.withAudioController {
+                    block(it)
+                    currentPositionMsState = it.currentPositionMs
+                    totalDurationMsState = it.totalDurationMs
+                    true
+                }
+            }.onFailure { e ->
+                Log.d(TAG, "$name failed: ${e.message}", e)
             }
         }
     }
+
+    val displayedTitle = activeCheckout?.title?.takeIf { it.isNotBlank() } ?: "Audiobook"
+    val isbnLabel = activeCheckout?.materialId?.let { "ISBN $it" } ?: "No audiobook selected"
+
+    HeadlessAudioPlayerLayout(
+        state = HeadlessAudioPlayerUiState(
+            screenTitle = "Headless audio player",
+            isbnLabel = isbnLabel,
+            statusMessage = statusMessage,
+            trackTitle = displayedTitle,
+            isPlaying = isPlayingState,
+            positionMs = currentPositionMsState,
+            durationMs = totalDurationMsState,
+            playbackSpeed = playbackSpeed,
+            controlsEnabled = controlsEnabled,
+            playPauseEnabled = controlsEnabled,
+        ),
+        callbacks = HeadlessAudioPlayerCallbacks(
+            onClose = goBack,
+            onSeekTo = { target -> withController("seek") { it.seekTo(target) } },
+            onSkipBack = {
+                withController("skip-back") {
+                    it.seekTo(max(0L, it.currentPositionMs - SEEK_INTERVAL_MS))
+                }
+            },
+            onSkipForward = {
+                withController("skip-forward") {
+                    val d = it.totalDurationMs
+                    val candidate = it.currentPositionMs + SEEK_INTERVAL_MS
+                    it.seekTo(if (d > 0L) candidate.coerceAtMost(d) else candidate)
+                }
+            },
+            onTogglePlayPause = {
+                withController("play/pause") {
+                    if (it.isPlaying) it.pause() else it.play()
+                }
+            },
+            onSpeedSelected = { speed ->
+                withController("setPlaybackSpeed") { it.setPlaybackSpeed(speed) }
+            },
+        ),
+    ) {
+        AudioDownloadCard(
+            downloadState = downloadStatus?.state,
+            downloadProgress = (downloadStatus?.progress ?: 0.0).toFloat(),
+            isDownloading = isDownloading,
+            canDownload = canDownload,
+            canDelete = canDelete,
+            canStop = activeCheckout?.type == MaterialType.Audiobook,
+            stopLabel = "Stop audio service",
+            onDownload = {
+                activeCheckout?.let { selectedCheckout ->
+                    coroutineScope.launch {
+                        val started = runCatching {
+                            WeDoBooksSdk.storageOperations.downloadBook(selectedCheckout)
+                        }.onFailure { e ->
+                            Log.d(TAG, "downloadBook failed: ${e.message}", e)
+                        }.isSuccess
+                        statusMessage = if (started) "Download started" else "Download failed"
+                    }
+                }
+            },
+            onDelete = {
+                activeCheckout?.let { selectedCheckout ->
+                    coroutineScope.launch {
+                        val removed = try {
+                            WeDoBooksSdk.storageOperations.removeBook(selectedCheckout.materialId)
+                        } catch (e: Exception) {
+                            Log.d(TAG, "removeBook failed: ${e.message}", e)
+                            false
+                        }
+                        statusMessage = if (removed) "Download removed" else "Remove failed"
+                    }
+                }
+            },
+            onStop = {
+                WeDoBooksSdk.bookOperations.stopAudioPlayer()
+                goBack()
+            },
+        )
+    }
 }
 
-private fun formatMinSec(positionMs: Long): String {
-    val totalSeconds = (positionMs / 1000L).coerceAtLeast(0L)
-    val minutes = totalSeconds / 60
-    val seconds = totalSeconds % 60
-    return "%02d:%02d".format(minutes, seconds)
-}

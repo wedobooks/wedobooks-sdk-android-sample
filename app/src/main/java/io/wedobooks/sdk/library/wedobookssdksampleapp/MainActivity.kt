@@ -13,38 +13,55 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBarsPadding
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.material3.SwipeToDismissBox
+import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
+import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import io.wedobooks.sdk.R
 import io.wedobooks.sdk.WeDoBooksSdk
-import io.wedobooks.sdk.library.wedobookssdksampleapp.ui.WDBAudioPlayerScreen
+import io.wedobooks.sdk.models.Checkout
+import io.wedobooks.sdk.models.enums.MaterialType
 import io.wedobooks.sdk.library.wedobookssdksampleapp.ui.DownloadedBooksScreen
+import io.wedobooks.sdk.library.wedobookssdksampleapp.ui.DevicesScreen
+import io.wedobooks.sdk.library.wedobookssdksampleapp.ui.HeadlessAudioSampleScreen
 import io.wedobooks.sdk.library.wedobookssdksampleapp.ui.HeadlessAudioScreen
 import io.wedobooks.sdk.library.wedobookssdksampleapp.ui.LoginScreen
 import io.wedobooks.sdk.library.wedobookssdksampleapp.ui.MainScreen
 import io.wedobooks.sdk.library.wedobookssdksampleapp.ui.StatsScreen
-import io.wedobooks.sdk.library.wedobookssdksampleapp.ui.theme.WeDoBooksSDKSampleAppTheme
-import io.wedobooks.sdk.models.Checkout
-import kotlinx.coroutines.flow.emptyFlow
+import io.wedobooks.sdk.library.wedobookssdksampleapp.ui.WdbAudioPlayerScreen
+import io.wedobooks.sdk.library.wedobookssdksampleapp.ui.theme.WeDoBooksSdkTheme
+import io.wedobooks.sdk.library.wedobookssdksampleapp.services.AuthService
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.launch
+
+private const val TAG = "SampleMainActivity"
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -56,11 +73,46 @@ class MainActivity : ComponentActivity() {
                 mutableStateOf<Checkout?>(null)
             }
             val isSystemDarkMode = isSystemInDarkTheme()
+            // Treat the presence of a signed-in user id as the authoritative
+            // "is authenticated" signal for the sample app. Anything below that
+            // touches SDK surfaces requiring permissions/auth must be guarded
+            // by this flag so it doesn't fire pre-login or after sign-out.
+            val currentUserId by AuthService.instance.currentUser.collectAsState()
+            val isAuthenticated = currentUserId != null
+            // Only attach the reader's bookLoadedFlow listener once we have a
+            // signed-in user — pre-auth the reader has nothing meaningful to
+            // report, and we don't want to risk subscribing before SDK
+            // initialisation is complete.
+            val isBookLoaded by remember(isAuthenticated) {
+                if (isAuthenticated) {
+                    WeDoBooksSdk.reader.bookLoadedFlow
+                } else {
+                    flowOf(false)
+                }
+            }.collectAsState(false)
             var isDarkMode by remember {
                 mutableStateOf(isSystemDarkMode)
             }
 
-            WeDoBooksSDKSampleAppTheme(
+            LaunchedEffect(isBookLoaded, isAuthenticated) {
+                /*
+                   If used for initial progress, please set internalProgressConfig.reader = false
+                   else the internal progress and your progress might be in a race condition,
+                   with the later overwriting the first.
+
+                   Also please only use it like this if you intend on disabling screen rotation else it will use goTo again on rotation.
+                   Propper usage would be through a ViewModel that only calls it once
+                */
+                if (isAuthenticated && isBookLoaded) {
+                    runCatching {
+                        WeDoBooksSdk.reader.percentageToCfi(0.5, 9).let {
+                            WeDoBooksSdk.reader.goTo(it)
+                        }
+                    }
+                }
+            }
+
+            WeDoBooksSdkTheme(
                 darkTheme = isDarkMode
             ) {
                 Box {
@@ -87,17 +139,26 @@ class MainActivity : ComponentActivity() {
                                 goToHeadlessAudio = {
                                     mainNavController.navigate(Routes.headlessAudio)
                                 },
-                                goToWDBAudioPlayer = {
+                                goToWdbAudioPlayer = {
                                     mainNavController.navigate(Routes.wdbAudioPlayer)
                                 },
                                 goToLogin = {
                                     mainNavController.navigate(Routes.login)
                                 },
-                                goToStats = {
-                                    mainNavController.navigate(Routes.stats)
-                                },
-                                goToDownloadedBooks = {
+                                goToDownloadedBooks ={
                                     mainNavController.navigate(Routes.downloadedBooks)
+                                },
+                                goToDevices = {
+                                    mainNavController.navigate(Routes.devices)
+                                },
+                                goToSampleEbook = {
+                                    mainNavController.navigate(Routes.sampleEbook)
+                                },
+                                goToSampleAudiobook = {
+                                    mainNavController.navigate(Routes.sampleAudiobook)
+                                },
+                                goToHeadlessSampleAudio = {
+                                    mainNavController.navigate(Routes.headlessSampleAudio)
                                 },
                                 toggleDarkMode = {
                                     isDarkMode = !isDarkMode
@@ -105,43 +166,32 @@ class MainActivity : ComponentActivity() {
                             )
                         }
                         composable(route = Routes.reader) {
-                            // Listen to progress in the book
-                            val sessionProgress by remember {
-                                WeDoBooksSdk.reader.sessionProgressFlow
-                            }.collectAsState(initial = null)
+                            val sessionProgress by remember(checkout) {
+                                if (checkout?.type == MaterialType.Ebook) {
+                                    WeDoBooksSdk.reader.sessionProgressFlow
+                                } else flowOf(null)
+                            }.collectAsState(null)
                             LaunchedEffect(sessionProgress) {
-                                Log.d("MainActivity", "sessionProgress: $sessionProgress")
+                                Log.d("Progress", "$sessionProgress")
                             }
-                            /*
-                                When book is loaded use goTo like this, if your progress was saved in percentage
-                                otherwise use initialReaderCfi in BookScreen
-                                this does not require internalProgressConfig.reader = false,
-                            */
-                            val isBookLoaded by remember {
-                                WeDoBooksSdk.reader.bookLoadedFlow
-                            }.collectAsState(false)
-                            LaunchedEffect(isBookLoaded) {
-                                if (isBookLoaded) {
-                                    // can seek to cfi in book as long as book is loaded
-                                    WeDoBooksSdk.reader.goTo(
-                                        WeDoBooksSdk.reader.percentageToCfi(0.5)
-                                    )
-                                }
-                            }
-
                             WeDoBooksSdk.bookOperations.BookScreen(
                                 checkout = checkout,
-                                cover = null, // you can set your own coverUrl else set to null if you want to use coverUrl provided by WeDoBooks
+                                cover = null,
                                 onCloseClick = {
                                     mainNavController.popBackStack()
                                 },
-                                onFinishClick = {}, // there is a button when you get to the end of the ebook
-                                isFinishButtonEnabled = false,
+                                onFinishClick = { finishedCheckout ->
+                                    Log.d(
+                                        TAG,
+                                        "Finish button clicked for checkoutId=${finishedCheckout.id}"
+                                    )
+                                },
+                                isFinishButtonEnabled = true,
                                 onAudioMinimizeClick = null, // different behavior for minimize else defaults to onCloseClick without stopping audio
+                                initialAudioBookProgressMs = 32000, // only used if internalProgressConfig.player = false
+                                initialReaderCfi = null, // only used if internalProgressConfig.reader = false
                                 viewModelStoreOwner = null, // if you want to save state outside this composable
-                                initialAudioBookProgressMs = null, // used when useInternalProgressService is set to false in WdbConfiguration
-                                initialReaderCfi = null, // used when useInternalProgressService is set to false in WdbConfiguration starts book at a certain cfi
-                                isDarkMode = isDarkMode,
+                                isDarkMode = isDarkMode
                             )
                         }
                         composable(route = Routes.headlessAudio) {
@@ -153,7 +203,7 @@ class MainActivity : ComponentActivity() {
                             )
                         }
                         composable(route = Routes.wdbAudioPlayer) {
-                            WDBAudioPlayerScreen(
+                            WdbAudioPlayerScreen(
                                 checkout = checkout,
                                 goBack = {
                                     mainNavController.popBackStack()
@@ -162,10 +212,7 @@ class MainActivity : ComponentActivity() {
                         }
                         composable(route = Routes.stats) {
                             StatsScreen(
-                                checkout = checkout,
-                                goBack = {
-                                    mainNavController.popBackStack()
-                                }
+                                checkouts = listOfNotNull(checkout),
                             )
                         }
                         composable(route = Routes.downloadedBooks) {
@@ -173,6 +220,43 @@ class MainActivity : ComponentActivity() {
                                 goBack = {
                                     mainNavController.popBackStack()
                                 }
+                            )
+                        }
+                        composable(route = Routes.devices) {
+                            DevicesScreen(
+                                goBack = {
+                                    mainNavController.popBackStack()
+                                }
+                            )
+                        }
+                        composable(route = Routes.sampleEbook) {
+                            WeDoBooksSdk.bookOperations.SampleBookScreen(
+                                isbn = "TODO: insert ebook isbn",
+                                materialType = MaterialType.Ebook,
+                                cover = null,
+                                onCloseClick = {
+                                    mainNavController.popBackStack()
+                                },
+                                isDarkMode = isDarkMode,
+                                metadata = null,
+                            )
+                        }
+                        composable(route = Routes.sampleAudiobook) {
+                            WeDoBooksSdk.bookOperations.SampleBookScreen(
+                                isbn = "TODO: insert audiobook isbn",
+                                materialType = MaterialType.Audiobook,
+                                cover = null,
+                                onCloseClick = {
+                                    mainNavController.popBackStack()
+                                },
+                                isDarkMode = isDarkMode,
+                                metadata = null,
+                            )
+                        }
+                        composable(route = Routes.headlessSampleAudio) {
+                            HeadlessAudioSampleScreen(
+                                isbn = "TODO: insert audiobook isbn",
+                                goBack = { mainNavController.popBackStack() },
                             )
                         }
                     }
@@ -213,57 +297,112 @@ fun EasyAccess(
     navController: NavController,
     onEasyAccessClick: (Checkout) -> Unit,
 ) {
+    // EasyAccess is mounted as an overlay outside the NavHost, so it gets
+    // composed at the same time as the login screen. Gate the SDK subscription
+    // on auth state so we don't open a `lastOpenedBookFlow` listener before
+    // the user signs in (or after sign-out).
+    val currentUserId by AuthService.instance.currentUser.collectAsState()
+    if (currentUserId == null) return
+
     val ctx = LocalContext.current.applicationContext
-    /*
-    * Very important to use lastOpenedBookFlow inside a remember or in a ViewModel you don't want it to infinitely recompose
-    * The bookProgess and EasyAccess Progress only works if you use useInternalProgressService = true in WdbConfiguration
-    * Ebooks works regardless of settings
-    */
+    val scope = rememberCoroutineScope()
+    // very important to use lastOpenedBookFlow like this or in a ViewModel you don't want it to infinitely recompose
     val easyAccessState by remember { WeDoBooksSdk.easyAccess.lastOpenedBookFlow(ctx) }.collectAsState(
         null
     )
     val currentRoute = navController.currentBackStackEntryAsState()
-    val materialId = remember(easyAccessState) { easyAccessState?.checkout?.materialId }
-    val bookProgress by remember(materialId) {
-        materialId?.let { WeDoBooksSdk.bookOperations.bookProgressFlow(it) } ?: emptyFlow()
-    }.collectAsState(null)
 
     currentRoute.value?.destination?.route?.let {
         if (Routes.main == it) {
             easyAccessState?.checkout?.let { checkout ->
-                Surface(
-                    modifier = modifier,
-                    color = MaterialTheme.colorScheme.background,
-                    shadowElevation = 8.dp
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .clickable(
-                                onClick = {
-                                    onEasyAccessClick(checkout)
-                                },
-                                role = Role.Button
-                            )
-                    ) {
-                        LinearProgressIndicator(
-                            modifier = Modifier
-                                .align(Alignment.BottomCenter)
-                                .height(4.dp)
-                                .fillMaxWidth(),
-                            trackColor = MaterialTheme.colorScheme.outline,
-                            color = MaterialTheme.colorScheme.primary,
-                            progress = {
-                                // Choose from easyAccessState or bookProgress
-                                bookProgress?.progress?.toFloat() ?: 0f
-                            }
-                        )
+                // Local dismissed flag — flipped synchronously the moment the
+                // user completes a swipe so the entire 60-dp surface
+                // collapses immediately, instead of leaving an empty slot
+                // until the async `removeEasyAccess` clears the SDK state.
+                // Keyed on `checkout.id` so the next book's easy-access card
+                // doesn't start out hidden.
+                var locallyDismissed by remember(checkout.id) { mutableStateOf(false) }
+                if (locallyDismissed) return@let
 
-                        Text(
-                            modifier = Modifier.align(Alignment.Center),
-                            text = checkout.title,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
+                val dismissState = rememberSwipeToDismissBoxState(
+                    confirmValueChange = { target ->
+                        val swiped = target == SwipeToDismissBoxValue.StartToEnd ||
+                            target == SwipeToDismissBoxValue.EndToStart
+                        if (swiped) {
+                            locallyDismissed = true
+                            scope.launch {
+                                WeDoBooksSdk.easyAccess.removeEasyAccess(ctx)
+                            }
+                        }
+                        swiped
+                    },
+                )
+
+                SwipeToDismissBox(
+                    state = dismissState,
+                    modifier = modifier,
+                    enableDismissFromStartToEnd = true,
+                    enableDismissFromEndToStart = true,
+                    backgroundContent = { /* empty — let the underlying nav host show through */ },
+                ) {
+                    Surface(
+                        color = MaterialTheme.colorScheme.background,
+                        shadowElevation = 8.dp,
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .clickable(
+                                    onClick = {
+                                        onEasyAccessClick(checkout)
+                                    },
+                                    role = Role.Button,
+                                ),
+                        ) {
+                            LinearProgressIndicator(
+                                modifier = Modifier
+                                    .align(Alignment.BottomCenter)
+                                    .height(4.dp)
+                                    .fillMaxWidth(),
+                                trackColor = MaterialTheme.colorScheme.outline,
+                                color = MaterialTheme.colorScheme.primary,
+                                progress = {
+                                    easyAccessState?.progress?.toFloat() ?: 0f
+                                },
+                            )
+
+                            // Reserve symmetric horizontal space so a long title
+                            // stays centered without sliding under the close icon.
+                            Text(
+                                modifier = Modifier
+                                    .align(Alignment.Center)
+                                    .padding(horizontal = 48.dp),
+                                text = checkout.title,
+                                color = MaterialTheme.colorScheme.onSurface,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+
+                            IconButton(
+                                modifier = Modifier
+                                    .align(Alignment.CenterEnd)
+                                    .padding(end = 4.dp)
+                                    .size(40.dp),
+                                onClick = {
+                                    locallyDismissed = true
+                                    scope.launch {
+                                        WeDoBooksSdk.easyAccess.removeEasyAccess(ctx)
+                                    }
+                                },
+                            ) {
+                                Icon(
+                                    modifier = Modifier.size(18.dp),
+                                    painter = painterResource(R.drawable.ic_close),
+                                    contentDescription = "Dismiss easy access",
+                                    tint = MaterialTheme.colorScheme.onSurface,
+                                )
+                            }
+                        }
                     }
                 }
             }

@@ -1,12 +1,23 @@
 package io.wedobooks.sdk.library.wedobookssdksampleapp
 
 import android.app.Application
+import android.util.Log
 import io.wedobooks.sdk.WeDoBooksSdk
+import io.wedobooks.sdk.models.SdkMode
 import io.wedobooks.sdk.models.WdbConfiguration
 import io.wedobooks.sdk.models.WdbInternalProgressConfig
 import io.wedobooks.sdk.models.WdbThemeConfiguration
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.onEach
+
+private const val TAG = "SampleApplication"
 
 class SampleApplication : Application() {
+    private val applicationScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+
     override fun onCreate() {
         super.onCreate()
 
@@ -20,11 +31,21 @@ class SampleApplication : Application() {
                 readerApiKey = BuildConfig.READER_API_KEY,
                 readerApiSecret = BuildConfig.READER_API_SECRET,
                 internalProgressConfig = WdbInternalProgressConfig(),
-                sdkMode = // SdkMode.Library or SdkMode.Streaming,
+                sdkMode = SdkMode.Library // or SdkMode.Streaming,
             ),
             themeConfig = WdbThemeConfiguration
                 .builder()
                 .build()
         )
+
+        // Observe SDK background errors (Firestore permission failures, etc.).
+        // The SDK already prevents them from crashing the process; this lets
+        // the host log them centrally and, in a real app, escalate to crash
+        // reporting or surface a snackbar.
+        WeDoBooksSdk.bookOperations.errorsFlow
+            .onEach { error ->
+                Log.e(TAG, "SDK background error", error)
+            }
+            .launchIn(applicationScope)
     }
 }
