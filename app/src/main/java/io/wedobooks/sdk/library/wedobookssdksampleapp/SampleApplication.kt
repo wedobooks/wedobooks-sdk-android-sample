@@ -30,7 +30,10 @@ class SampleApplication : Application() {
                 firebaseAppId = Constants.SDK_APP_ID,
                 readerApiKey = BuildConfig.READER_API_KEY,
                 readerApiSecret = BuildConfig.READER_API_SECRET,
-                internalProgressConfig = WdbInternalProgressConfig(),
+                internalProgressConfig = WdbInternalProgressConfig(
+                    player = false,
+                    reader = false,
+                ),
                 sdkMode = SdkMode.Library // or SdkMode.Streaming,
             ),
             themeConfig = WdbThemeConfiguration

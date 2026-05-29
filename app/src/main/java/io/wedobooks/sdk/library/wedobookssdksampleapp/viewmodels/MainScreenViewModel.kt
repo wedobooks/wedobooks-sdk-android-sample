@@ -16,37 +16,30 @@ import kotlinx.coroutines.launch
 
 private const val TAG = "MainScreenViewModel"
 
-class MainScreenViewModel: ViewModel() {
+class MainScreenViewModel : ViewModel() {
     val authService = AuthService.instance
     val isEbookCheckoutLoading = mutableStateOf(false)
     val isAudioCheckoutLoading = mutableStateOf(false)
     val didCheckoutFail = MutableStateFlow(false)
 
     // ask WeDoBooks for isbns for different books
-    suspend fun getCheckout(materialType: MaterialType): Checkout? {
-        val isbn = when(materialType) {
-            MaterialType.Audiobook -> "TODO: insert audiobook isbn"
-            MaterialType.Ebook -> "TODO: insert ebook isbn"
-            else -> null
-        }
+    suspend fun getCheckout(isbn: String, materialType: MaterialType): Checkout? {
         val loader = when (materialType) {
-            MaterialType.Audiobook ->  isAudioCheckoutLoading
-            MaterialType.Ebook ->  isEbookCheckoutLoading
-            else -> mutableStateOf(false)
+            MaterialType.Audiobook -> isAudioCheckoutLoading
+            MaterialType.Ebook -> isEbookCheckoutLoading
         }
         loader.value = true
 
-        return isbn?.let {
-            try {
-                WeDoBooksSdk.bookOperations.checkoutBook(it)
-            } catch (e: Exception) {
-                Log.d(TAG, "err: ${e.message}")
-                didCheckoutFail.update { true }
-                null
-            } finally {
-                loader.value = false
-            }
+        return try {
+            WeDoBooksSdk.bookOperations.checkoutBook(isbn)
+        } catch (e: Exception) {
+            Log.d(TAG, "err: ${e.message}")
+            didCheckoutFail.update { true }
+            null
+        } finally {
+            loader.value = false
         }
+
     }
 
     fun stopAudio() {
@@ -68,7 +61,7 @@ class MainScreenViewModel: ViewModel() {
                 WdbDownloadState.Paused,
                 WdbDownloadState.Cancelled,
                 WdbDownloadState.Error,
-                -> true
+                    -> true
 
                 else -> false
             }

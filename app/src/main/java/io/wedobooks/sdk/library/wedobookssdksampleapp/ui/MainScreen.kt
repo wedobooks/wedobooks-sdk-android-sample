@@ -74,12 +74,12 @@ fun MainScreen(
     val testMaterials = remember {
         listOf(
             TestMaterial(
-                isbn = "TODO: insert ebook isbn",
+                isbn = TODO("replace with isbn"),
                 type = MaterialType.Ebook,
                 label = "Ebook",
             ),
             TestMaterial(
-                isbn = "TODO: insert audiobook isbn",
+                isbn = TODO("replace with isbn"),
                 type = MaterialType.Audiobook,
                 label = "Audiobook",
             ),
@@ -212,7 +212,10 @@ private fun CheckoutsTab(
                     isTogglePending = isTogglePending,
                     onRequestCheckout = {
                         coroutineScope.launch {
-                            vm.getCheckout(material.type)
+                            vm.getCheckout(
+                                isbn = material.isbn,
+                                materialType = material.type
+                            )
                         }
                     },
                     onOpen = {
