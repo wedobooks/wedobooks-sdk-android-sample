@@ -1,5 +1,6 @@
 package io.wedobooks.sdk.library.wedobookssdksampleapp.ui
 
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -20,10 +21,13 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -36,6 +40,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -417,6 +422,8 @@ private fun SettingsTab(
         System.runFinalization()
     }
 
+    var showHistorySheet by remember { mutableStateOf(false) }
+
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
@@ -479,6 +486,16 @@ private fun SettingsTab(
             }
         }
 
+        // History — add a material to reading history by ISBN (opens a sheet).
+        section("History") {
+            item {
+                CustomButton(
+                    title = "Add to history",
+                    onClick = { showHistorySheet = true },
+                )
+            }
+        }
+
         // Account — destructive action lives at the bottom by convention.
         section("Account") {
             item {
@@ -492,6 +509,75 @@ private fun SettingsTab(
                     },
                 )
             }
+        }
+    }
+
+    if (showHistorySheet) {
+        AddToHistorySheet(
+            vm = vm,
+            onDismiss = { showHistorySheet = false },
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun AddToHistorySheet(
+    vm: MainScreenViewModel,
+    onDismiss: () -> Unit,
+) {
+    val sheetState = rememberModalBottomSheetState()
+    val coroutineScope = rememberCoroutineScope()
+    val context = LocalContext.current
+    var isbn by remember { mutableStateOf("") }
+    val isAdding by vm.isAddingToHistory
+
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = sheetState,
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 24.dp)
+                .padding(bottom = 32.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Text(
+                text = "Add to history",
+                color = MaterialTheme.colorScheme.onSurface,
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.SemiBold,
+            )
+            Text(
+                text = "Adds a material to your reading history as a completed entry.",
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+                style = MaterialTheme.typography.bodyMedium,
+            )
+            OutlinedTextField(
+                value = isbn,
+                onValueChange = { isbn = it },
+                label = { Text("ISBN") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+            )
+            CustomButton(
+                title = "Add to history",
+                isLoading = isAdding,
+                enabled = isbn.isNotBlank(),
+                onClick = {
+                    val materialId = isbn.trim()
+                    coroutineScope.launch {
+                        val error = vm.addToHistory(materialId)
+                        if (error == null) {
+                            isbn = ""
+                            Toast.makeText(context, "Added $materialId to history", Toast.LENGTH_SHORT).show()
+                        } else {
+                            Toast.makeText(context, error, Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                },
+            )
         }
     }
 }
