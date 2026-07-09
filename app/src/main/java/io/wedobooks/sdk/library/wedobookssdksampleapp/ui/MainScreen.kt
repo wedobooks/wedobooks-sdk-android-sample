@@ -47,6 +47,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import io.wedobooks.sdk.WeDoBooksSdk
+import io.wedobooks.sdk.library.wedobookssdksampleapp.Constants
 import io.wedobooks.sdk.library.wedobookssdksampleapp.viewmodels.MainScreenViewModel
 import io.wedobooks.sdk.models.Checkout
 import io.wedobooks.sdk.models.WdbDownloadStatus
@@ -79,12 +80,12 @@ fun MainScreen(
     val testMaterials = remember {
         listOf(
             TestMaterial(
-                isbn = TODO("replace with isbn"),
+                isbn = Constants.E_BOOK,
                 type = MaterialType.Ebook,
                 label = "Ebook",
             ),
             TestMaterial(
-                isbn = TODO("replace with isbn"),
+                isbn = Constants.AUDIO_BOOK,
                 type = MaterialType.Audiobook,
                 label = "Audiobook",
             ),
