@@ -57,6 +57,26 @@ Make sure to include the following permissions in your `AndroidManifest.xml`:
 <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
 ```
 
+#### Audio player service
+
+If your app plays audio through the SDK — either the **headless audio player** (`WeDoBooksSdk.headlessAudioPlayer`) or the player built into **`BookScreen`** (`WeDoBooksSdk.bookOperations.BookScreen`) — you must also declare the SDK's player service in your `AndroidManifest.xml`, inside the `<application>` element:
+
+```xml
+<service
+    android:name="io.wedobooks.player.services.AudioPlayerSessionService"
+    android:exported="true"
+    android:foregroundServiceType="mediaPlayback">
+    <intent-filter>
+        <action android:name="androidx.media3.session.MediaLibraryService" />
+        <action android:name="android.media.browse.MediaBrowserService" />
+    </intent-filter>
+</service>
+```
+
+Playback runs in a media-session foreground service, and the host app must register it — the SDK no longer contributes this declaration automatically. Without it, audio playback will fail to start. The `FOREGROUND_SERVICE` and `FOREGROUND_SERVICE_MEDIA_PLAYBACK` permissions above are also required for the service to run.
+
+`android:exported` is your choice: use `true` to let external media controllers (such as Android Auto or Google Assistant) connect to the session, or `false` to keep the service private to your app. In-app playback works either way.
+
 ---
 
 ## Backend-to-Backend Integration
