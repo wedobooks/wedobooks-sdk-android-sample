@@ -20,6 +20,7 @@ class MainScreenViewModel : ViewModel() {
     val authService = AuthService.instance
     val isEbookCheckoutLoading = mutableStateOf(false)
     val isAudioCheckoutLoading = mutableStateOf(false)
+    val isAddingToHistory = mutableStateOf(false)
     val didCheckoutFail = MutableStateFlow(false)
 
     // ask WeDoBooks for isbns for different books
@@ -40,6 +41,24 @@ class MainScreenViewModel : ViewModel() {
             loader.value = false
         }
 
+    }
+
+    /**
+     * Adds [isbn] to the signed-in user's history (as a completed entry, per the SDK).
+     *
+     * @return `null` on success, or a user-facing error message to surface (e.g. a toast).
+     */
+    suspend fun addToHistory(isbn: String): String? {
+        isAddingToHistory.value = true
+        return try {
+            WeDoBooksSdk.historyOperations.add(isbn.trim())
+            null
+        } catch (t: Throwable) {
+            Log.d(TAG, "addToHistory err: ${t.message}")
+            historyWriteErrorMessage(t)
+        } finally {
+            isAddingToHistory.value = false
+        }
     }
 
     fun stopAudio() {

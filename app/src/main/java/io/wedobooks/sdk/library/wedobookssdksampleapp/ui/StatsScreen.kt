@@ -1,10 +1,10 @@
 package io.wedobooks.sdk.library.wedobookssdksampleapp.ui
 
 import android.app.DatePickerDialog
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -14,7 +14,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ElevatedCard
@@ -34,6 +33,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import io.wedobooks.sdk.library.wedobookssdksampleapp.ui.components.PagerDots
 import io.wedobooks.sdk.library.wedobookssdksampleapp.viewmodels.StatsScreenViewModel
 import io.wedobooks.sdk.models.Checkout
 import io.wedobooks.sdk.models.StatData
@@ -111,7 +111,8 @@ fun StatsScreen(
     Column(
         modifier = Modifier
             .systemBarsPadding()
-            .fillMaxSize(),
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState()),
     ) {
         Row(
             modifier = Modifier
@@ -171,25 +172,9 @@ fun StatsScreen(
             }
         }
 
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.Center,
-        ) {
-            repeat(pagerState.pageCount) {
-                val isSelected = pagerState.currentPage == it
-                Box(
-                    modifier = Modifier
-                        .padding(vertical = 8.dp, horizontal = 4.dp)
-                        .size(8.dp)
-                        .background(
-                            color = if (isSelected) {
-                                MaterialTheme.colorScheme.primary
-                            } else MaterialTheme.colorScheme.outline,
-                            shape = CircleShape,
-                        ),
-                )
-            }
-        }
+        PagerDots(pagerState = pagerState)
+
+        HistoryPager()
     }
 }
 
