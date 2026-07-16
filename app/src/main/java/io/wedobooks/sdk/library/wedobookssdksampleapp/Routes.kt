@@ -12,4 +12,5 @@ object Routes {
     val sampleEbook = "sample_ebook"
     val sampleAudiobook = "sample_audiobook"
     val headlessSampleAudio = "headless_sample_audio"
+    val wdbSampleAudio = "wdb_sample_audio"
 }

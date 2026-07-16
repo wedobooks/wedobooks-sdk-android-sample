@@ -3,6 +3,7 @@ package io.wedobooks.sdk.library.wedobookssdksampleapp
 import android.os.Bundle
 import android.util.Log
 import android.view.ActionMode
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -55,6 +56,7 @@ import io.wedobooks.sdk.library.wedobookssdksampleapp.ui.HeadlessAudioScreen
 import io.wedobooks.sdk.library.wedobookssdksampleapp.ui.LoginScreen
 import io.wedobooks.sdk.library.wedobookssdksampleapp.ui.MainScreen
 import io.wedobooks.sdk.library.wedobookssdksampleapp.ui.StatsScreen
+import io.wedobooks.sdk.library.wedobookssdksampleapp.ui.WdbAudioPlayerSampleScreen
 import io.wedobooks.sdk.library.wedobookssdksampleapp.ui.WdbAudioPlayerScreen
 import io.wedobooks.sdk.library.wedobookssdksampleapp.ui.theme.WeDoBooksSdkTheme
 import io.wedobooks.sdk.library.wedobookssdksampleapp.services.AuthService
@@ -112,6 +114,12 @@ class MainActivity : ComponentActivity() {
                 }
             }
 
+            LaunchedEffect(Unit) {
+                WeDoBooksSdk.events.sessionInterruptionEvents().collect { event ->
+                    Log.d(TAG, "sessionInterrupted= $event")
+                }
+            }
+
             WeDoBooksSdkTheme(
                 darkTheme = isDarkMode
             ) {
@@ -160,6 +168,9 @@ class MainActivity : ComponentActivity() {
                                 goToHeadlessSampleAudio = {
                                     mainNavController.navigate(Routes.headlessSampleAudio)
                                 },
+                                goToWdbSampleAudio = {
+                                    mainNavController.navigate(Routes.wdbSampleAudio)
+                                },
                                 toggleDarkMode = {
                                     isDarkMode = !isDarkMode
                                 }
@@ -174,6 +185,7 @@ class MainActivity : ComponentActivity() {
                             LaunchedEffect(sessionProgress) {
                                 Log.d("Progress", "$sessionProgress")
                             }
+                            val context = LocalContext.current
                             WeDoBooksSdk.bookOperations.BookScreen(
                                 checkout = checkout,
                                 cover = null,
@@ -191,7 +203,15 @@ class MainActivity : ComponentActivity() {
                                 initialAudioBookProgressMs = 32000, // only used if internalProgressConfig.player = false
                                 initialReaderCfi = null, // only used if internalProgressConfig.reader = false
                                 viewModelStoreOwner = null, // if you want to save state outside this composable
-                                isDarkMode = isDarkMode
+                                isDarkMode = isDarkMode,
+                                onError = { error ->
+                                    Log.e(TAG, "BookScreen failed to load", error)
+                                    Toast.makeText(
+                                        context,
+                                        error.message,
+                                        Toast.LENGTH_SHORT
+                                    ).show()
+                                },
                             )
                         }
                         composable(route = Routes.headlessAudio) {
@@ -231,7 +251,7 @@ class MainActivity : ComponentActivity() {
                         }
                         composable(route = Routes.sampleEbook) {
                             WeDoBooksSdk.bookOperations.SampleBookScreen(
-                                isbn = "TODO: insert ebook isbn",
+                                isbn = Constants.E_BOOK,
                                 materialType = MaterialType.Ebook,
                                 cover = null,
                                 onCloseClick = {
@@ -243,7 +263,7 @@ class MainActivity : ComponentActivity() {
                         }
                         composable(route = Routes.sampleAudiobook) {
                             WeDoBooksSdk.bookOperations.SampleBookScreen(
-                                isbn = "TODO: insert audiobook isbn",
+                                isbn = Constants.AUDIO_BOOK,
                                 materialType = MaterialType.Audiobook,
                                 cover = null,
                                 onCloseClick = {
@@ -255,7 +275,13 @@ class MainActivity : ComponentActivity() {
                         }
                         composable(route = Routes.headlessSampleAudio) {
                             HeadlessAudioSampleScreen(
-                                isbn = "TODO: insert audiobook isbn",
+                                isbn = Constants.AUDIO_BOOK,
+                                goBack = { mainNavController.popBackStack() },
+                            )
+                        }
+                        composable(route = Routes.wdbSampleAudio) {
+                            WdbAudioPlayerSampleScreen(
+                                isbn = Constants.AUDIO_BOOK,
                                 goBack = { mainNavController.popBackStack() },
                             )
                         }

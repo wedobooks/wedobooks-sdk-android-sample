@@ -15,6 +15,7 @@ import com.google.common.util.concurrent.ListenableFuture
 import com.google.common.util.concurrent.SettableFuture
 import io.wedobooks.sdk.WeDoBooksSdk
 import io.wedobooks.sdk.models.Checkout
+import io.wedobooks.sdk.models.CustomCover
 import io.wedobooks.sdk.models.WdbAudioPlayer
 import io.wedobooks.sdk.models.enums.MaterialType
 import kotlinx.coroutines.CoroutineScope
@@ -42,6 +43,8 @@ class WdbAudioPlayerSessionService : MediaLibraryService() {
         const val ARG_BOOK_TYPE = "arg_book_type"
         const val ARG_COVER_URL = "arg_cover_url"
         const val ARG_INITIAL_PROGRESS_MS = "arg_initial_progress_ms"
+        const val LOAD_SAMPLE_COMMAND = "custom_player.load_sample"
+        const val ARG_SAMPLE_ISBN = "arg_sample_isbn"
     }
 
     override fun onCreate() {
@@ -83,20 +86,42 @@ class WdbAudioPlayerSessionService : MediaLibraryService() {
         initialProgressMs: Long?,
     ): Boolean = withContext(Dispatchers.Main.immediate) {
         val currentPlayer = player ?: return@withContext false
+        // Tear down whatever is currently loaded (e.g. a still-playing sample) before loading the
+        // book. loadBook only swaps the media item, so on this reused/shared player the new book
+        // would otherwise start on top of the previous item's playback — wrong position and
+        // audio/UI desync. The SDK's own AudioServiceManager stops the current content first too.
+        currentPlayer.stop()
+        val cover = coverUrl?.let { CustomCover.Url(it) }
         val loaded = initialProgressMs?.let {
             currentPlayer.loadBook(
                 checkout = checkout,
-                coverUrl = coverUrl,
+                cover = cover,
                 initialProgressMs = it
             )
         } ?: currentPlayer.loadBook(
             checkout = checkout,
-            coverUrl = coverUrl,
+            cover = cover,
         )
         if (loaded) {
             currentPlayer.prepare()
         }
         loaded
+    }
+
+    private suspend fun loadSampleInternal(
+        isbn: String,
+        coverUrl: String?,
+    ): Boolean = withContext(Dispatchers.Main.immediate) {
+        val currentPlayer = player ?: return@withContext false
+        // Tear down whatever is currently loaded before loading the sample, so switching between a
+        // book and a sample on this reused/shared player starts cleanly (mirrors loadBookInternal).
+        currentPlayer.stop()
+        // loadSample plays a progressive MP3 and prepares itself — no extra prepare() needed,
+        // and it attaches no stats/progress, so the in-service sample stays a free preview.
+        currentPlayer.loadSample(
+            isbn = isbn,
+            cover = coverUrl?.let { CustomCover.Url(it) },
+        )
     }
 
     private fun parseCheckout(args: Bundle): Checkout? {
@@ -129,6 +154,7 @@ class WdbAudioPlayerSessionService : MediaLibraryService() {
             val commands = MediaSession.ConnectionResult.DEFAULT_SESSION_AND_LIBRARY_COMMANDS
                 .buildUpon()
                 .add(SessionCommand(LOAD_BOOK_COMMAND, Bundle.EMPTY))
+                .add(SessionCommand(LOAD_SAMPLE_COMMAND, Bundle.EMPTY))
                 .build()
             return MediaSession.ConnectionResult.AcceptedResultBuilder(session)
                 .setAvailableSessionCommands(commands)
@@ -141,6 +167,30 @@ class WdbAudioPlayerSessionService : MediaLibraryService() {
             customCommand: SessionCommand,
             args: Bundle,
         ): ListenableFuture<SessionResult> {
+            if (customCommand.customAction == LOAD_SAMPLE_COMMAND) {
+                val resultFuture = SettableFuture.create<SessionResult>()
+                val isbn = args.getString(ARG_SAMPLE_ISBN)
+                if (isbn.isNullOrBlank()) {
+                    resultFuture.set(SessionResult(SessionResult.RESULT_ERROR_BAD_VALUE))
+                    return resultFuture
+                }
+                val coverUrl = args.getString(ARG_COVER_URL)
+                serviceScope.launch {
+                    val loaded = runCatching {
+                        loadSampleInternal(isbn = isbn, coverUrl = coverUrl)
+                    }.getOrDefault(false)
+                    val extras = Bundle().apply {
+                        putBoolean(RESULT_DID_LOAD, loaded)
+                    }
+                    resultFuture.set(
+                        SessionResult(
+                            if (loaded) SessionResult.RESULT_SUCCESS else SessionResult.RESULT_ERROR_UNKNOWN,
+                            extras
+                        )
+                    )
+                }
+                return resultFuture
+            }
             if (customCommand.customAction != LOAD_BOOK_COMMAND) {
                 return super.onCustomCommand(session, controller, customCommand, args)
             }

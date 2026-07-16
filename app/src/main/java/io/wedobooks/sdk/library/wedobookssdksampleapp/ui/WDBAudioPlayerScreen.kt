@@ -1,7 +1,6 @@
 package io.wedobooks.sdk.library.wedobookssdksampleapp.ui
 
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -31,12 +30,6 @@ fun WdbAudioPlayerScreen(
     LaunchedEffect(checkout?.id) {
         vm.setCheckout(checkout)
         vm.loadPlayer()
-    }
-
-    DisposableEffect(Unit) {
-        onDispose {
-            vm.killPlayer()
-        }
     }
 
     val isAudio = uiState.checkout?.type == MaterialType.Audiobook

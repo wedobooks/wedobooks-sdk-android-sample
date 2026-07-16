@@ -74,6 +74,7 @@ fun MainScreen(
     goToSampleEbook: () -> Unit,
     goToSampleAudiobook: () -> Unit,
     goToHeadlessSampleAudio: () -> Unit,
+    goToWdbSampleAudio: () -> Unit,
     toggleDarkMode: () -> Unit,
 ) {
     val vm: MainScreenViewModel = viewModel()
@@ -137,6 +138,7 @@ fun MainScreen(
                     goToSampleEbook = goToSampleEbook,
                     goToSampleAudiobook = goToSampleAudiobook,
                     goToHeadlessSampleAudio = goToHeadlessSampleAudio,
+                    goToWdbSampleAudio = goToWdbSampleAudio,
                 )
 
                 1 -> StatsTab()
@@ -168,6 +170,7 @@ private fun CheckoutsTab(
     goToSampleEbook: () -> Unit,
     goToSampleAudiobook: () -> Unit,
     goToHeadlessSampleAudio: () -> Unit,
+    goToWdbSampleAudio: () -> Unit,
 ) {
     val coroutineScope = rememberCoroutineScope()
     val allCheckouts by remember { WeDoBooksSdk.bookOperations.allCheckoutsFlow() }
@@ -249,6 +252,9 @@ private fun CheckoutsTab(
                     onHeadlessSample = if (material.type == MaterialType.Audiobook) {
                         goToHeadlessSampleAudio
                     } else null,
+                    onWdbSample = if (material.type == MaterialType.Audiobook) {
+                        goToWdbSampleAudio
+                    } else null,
                     onToggleDownload = {
                         checkout?.let {
                             stateAtClick = downloadStatus?.state
@@ -276,6 +282,8 @@ private fun MaterialCard(
     onOpenSample: () -> Unit,
     /** Optional headless-sample button (only audiobooks expose this in the SDK). */
     onHeadlessSample: (() -> Unit)?,
+    /** Optional WdbAudioPlayer-sample button with custom UI (audiobooks only). */
+    onWdbSample: (() -> Unit)?,
     onToggleDownload: () -> Unit,
 ) {
     val downloadUiState = downloadStatus.toDownloadButtonState(
@@ -374,6 +382,12 @@ private fun MaterialCard(
                 CustomButton(
                     title = "Play sample (headless · custom UI)",
                     onClick = onHeadlessSample,
+                )
+            }
+            if (onWdbSample != null) {
+                CustomButton(
+                    title = "Play sample (Media3 builder · custom UI)",
+                    onClick = onWdbSample,
                 )
             }
         }

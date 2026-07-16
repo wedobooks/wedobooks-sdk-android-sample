@@ -157,6 +157,40 @@ class WdbAudioPlayerScreenViewModel(application: Application) : AndroidViewModel
         }
     }
 
+    fun loadSample(isbn: String) {
+        viewModelScope.launch {
+            if (isbn.isBlank()) {
+                _state.value = _state.value.copy(statusMessage = "No sample available")
+                return@launch
+            }
+            _state.value = _state.value.copy(
+                isLoading = true,
+                isPlayerReady = false,
+                didLoad = false,
+                statusMessage = "Loading sample...",
+            )
+            try {
+                val loaded = loadSampleWithCommand(isbn)
+                if (loaded) {
+                    _state.value = _state.value.copy(
+                        didLoad = true,
+                        statusMessage = "Sample loaded (plays in service), waiting for STATE_READY...",
+                    )
+                    startPositionPolling()
+                } else {
+                    _state.value = _state.value.copy(statusMessage = "No sample available")
+                }
+            } catch (e: Exception) {
+                _state.value = _state.value.copy(
+                    statusMessage = "Failed to load sample: ${e.message ?: "unknown error"}"
+                )
+                Log.d(TAG, "loadSample failed: ${e.message}", e)
+            } finally {
+                _state.value = _state.value.copy(isLoading = false)
+            }
+        }
+    }
+
     fun togglePlayPause() {
         viewModelScope.launch {
             withControllerOnMain { mediaController ->
@@ -314,6 +348,18 @@ class WdbAudioPlayerScreenViewModel(application: Application) : AndroidViewModel
         return result.extras.getBoolean(WdbAudioPlayerSessionService.RESULT_DID_LOAD, false)
     }
 
+    private suspend fun loadSampleWithCommand(isbn: String): Boolean {
+        val mediaController = getOrCreateController()
+        val args = Bundle().apply {
+            putString(WdbAudioPlayerSessionService.ARG_SAMPLE_ISBN, isbn)
+            putString(WdbAudioPlayerSessionService.ARG_COVER_URL, coverUrl)
+        }
+        val command = SessionCommand(WdbAudioPlayerSessionService.LOAD_SAMPLE_COMMAND, Bundle.EMPTY)
+        val result = mediaController.sendCustomCommand(command, args).await()
+        if (result.resultCode != SessionResult.RESULT_SUCCESS) return false
+        return result.extras.getBoolean(WdbAudioPlayerSessionService.RESULT_DID_LOAD, false)
+    }
+
     private fun startPositionPolling() {
         positionJob?.cancel()
         positionJob = viewModelScope.launch {
@@ -397,9 +443,4 @@ class WdbAudioPlayerScreenViewModel(application: Application) : AndroidViewModel
                 MoreExecutors.directExecutor()
             )
         }
-
-    override fun onCleared() {
-        releasePlayer()
-        super.onCleared()
-    }
 }
