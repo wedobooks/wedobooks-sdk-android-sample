@@ -3,7 +3,6 @@ package io.wedobooks.sdk.library.wedobookssdksampleapp
 import android.app.Application
 import android.util.Log
 import io.wedobooks.sdk.WeDoBooksSdk
-import io.wedobooks.sdk.models.SdkMode
 import io.wedobooks.sdk.models.WdbConfiguration
 import io.wedobooks.sdk.models.WdbInternalProgressConfig
 import io.wedobooks.sdk.models.WdbThemeConfiguration
@@ -34,7 +33,7 @@ class SampleApplication : Application() {
                     player = false,
                     reader = false,
                 ),
-                sdkMode = SdkMode.Library // or SdkMode.Streaming,
+                sdkMode = Constants.SDK_MODE,
             ),
             themeConfig = WdbThemeConfiguration
                 .builder()
@@ -45,7 +44,7 @@ class SampleApplication : Application() {
         // The SDK already prevents them from crashing the process; this lets
         // the host log them centrally and, in a real app, escalate to crash
         // reporting or surface a snackbar.
-        WeDoBooksSdk.bookOperations.errorsFlow
+        WeDoBooksSdk.events.errorsFlow
             .onEach { error ->
                 Log.e(TAG, "SDK background error", error)
             }
