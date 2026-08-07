@@ -8,6 +8,7 @@ object Constants {
     val SDK_PROJECT_ID = BuildConfig.FIREBASE_PROJECT_ID
     val E_BOOK: String = TODO("insert ebook isbn")
     val AUDIO_BOOK: String = TODO("insert audiobook isbn")
+    val RESERVATION_BOOK: String? = TODO("insert reservation book isbn")
     // Choose the SDK mode: SdkMode.Library or SdkMode.Streaming
     val SDK_MODE: SdkMode = TODO("insert SDK mode, e.g. SdkMode.Streaming")
 }

@@ -50,6 +50,7 @@ import io.wedobooks.sdk.WeDoBooksSdk
 import io.wedobooks.sdk.library.wedobookssdksampleapp.Constants
 import io.wedobooks.sdk.library.wedobookssdksampleapp.viewmodels.MainScreenViewModel
 import io.wedobooks.sdk.models.Checkout
+import io.wedobooks.sdk.models.SdkMode
 import io.wedobooks.sdk.models.WdbDownloadStatus
 import io.wedobooks.sdk.models.enums.MaterialType
 import io.wedobooks.sdk.models.enums.WdbDownloadState
@@ -93,7 +94,16 @@ fun MainScreen(
         )
     }
 
-    val tabs = remember { listOf("Checkouts", "Stats", "Settings") }
+    val tabs = remember {
+        listOfNotNull(
+            "Checkouts",
+            "Stats",
+            // Reservations are library-mode only; hide the tab entirely in streaming mode.
+            "Reservations".takeIf { Constants.SDK_MODE == SdkMode.Library },
+            // Settings always stays last, regardless of which tabs precede it.
+            "Settings",
+        )
+    }
     var selectedTab by remember { mutableIntStateOf(0) }
 
     Column(
@@ -127,8 +137,8 @@ fun MainScreen(
         }
 
         Box(modifier = Modifier.fillMaxSize()) {
-            when (selectedTab) {
-                0 -> CheckoutsTab(
+            when (tabs[selectedTab]) {
+                "Checkouts" -> CheckoutsTab(
                     vm = vm,
                     testMaterials = testMaterials,
                     setCheckout = setCheckout,
@@ -141,9 +151,11 @@ fun MainScreen(
                     goToWdbSampleAudio = goToWdbSampleAudio,
                 )
 
-                1 -> StatsTab()
+                "Stats" -> StatsTab()
 
-                2 -> SettingsTab(
+                "Reservations" -> ReservationsScreen()
+
+                "Settings" -> SettingsTab(
                     vm = vm,
                     goToLogin = goToLogin,
                     goToDownloadedBooks = goToDownloadedBooks,
