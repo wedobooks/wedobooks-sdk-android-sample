@@ -199,6 +199,7 @@ class MainActivity : ComponentActivity() {
                                     )
                                 },
                                 isFinishButtonEnabled = true,
+                                isMinimizeButtonEnabled = true,
                                 onAudioMinimizeClick = null, // different behavior for minimize else defaults to onCloseClick without stopping audio
                                 initialAudioBookProgressMs = 32000, // only used if internalProgressConfig.player = false
                                 initialReaderCfi = null, // only used if internalProgressConfig.reader = false
