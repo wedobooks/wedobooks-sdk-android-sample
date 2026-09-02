@@ -14,17 +14,16 @@ import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
 import com.google.common.util.concurrent.SettableFuture
 import io.wedobooks.sdk.WeDoBooksSdk
+import io.wedobooks.sdk.library.wedobookssdksampleapp.utils.toCheckout
 import io.wedobooks.sdk.models.Checkout
 import io.wedobooks.sdk.models.CustomCover
 import io.wedobooks.sdk.models.WdbAudioPlayer
-import io.wedobooks.sdk.models.enums.MaterialType
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.time.Instant
 
 @UnstableApi
 class WdbAudioPlayerSessionService : MediaLibraryService() {
@@ -36,11 +35,6 @@ class WdbAudioPlayerSessionService : MediaLibraryService() {
         private const val SESSION_ID = "custom_player_session"
         const val LOAD_BOOK_COMMAND = "custom_player.load_book"
         const val RESULT_DID_LOAD = "result_did_load"
-        const val ARG_CHECKOUT_ID = "arg_checkout_id"
-        const val ARG_MATERIAL_ID = "arg_material_id"
-        const val ARG_TITLE = "arg_title"
-        const val ARG_AUTHORS = "arg_authors"
-        const val ARG_BOOK_TYPE = "arg_book_type"
         const val ARG_COVER_URL = "arg_cover_url"
         const val ARG_INITIAL_PROGRESS_MS = "arg_initial_progress_ms"
         const val LOAD_SAMPLE_COMMAND = "custom_player.load_sample"
@@ -124,28 +118,6 @@ class WdbAudioPlayerSessionService : MediaLibraryService() {
         )
     }
 
-    private fun parseCheckout(args: Bundle): Checkout? {
-        val checkoutId = args.getString(ARG_CHECKOUT_ID) ?: return null
-        val materialId = args.getString(ARG_MATERIAL_ID) ?: return null
-        val title = args.getString(ARG_TITLE) ?: return null
-        val authors = args.getStringArrayList(ARG_AUTHORS)?.toList() ?: emptyList()
-        val typeName = args.getString(ARG_BOOK_TYPE) ?: return null
-        val type = runCatching { MaterialType.valueOf(typeName) }.getOrNull() ?: return null
-        return object : Checkout {
-            override val id: String = checkoutId
-            override val userId: String = ""
-            override val active: Boolean = true
-            override val author: List<String> = authors
-            override val materialId: String = materialId
-            override val title: String = title
-            override val type: MaterialType = type
-            override val publisher: String = ""
-            override val start: Instant = Instant.EPOCH
-            override val end: Instant = Instant.EPOCH
-            override val lastOpenedAt: Instant? = null
-        }
-    }
-
     private val callback = object : MediaLibrarySession.Callback {
         override fun onConnect(
             session: MediaSession,
@@ -195,7 +167,7 @@ class WdbAudioPlayerSessionService : MediaLibraryService() {
                 return super.onCustomCommand(session, controller, customCommand, args)
             }
             val resultFuture = SettableFuture.create<SessionResult>()
-            val checkout = parseCheckout(args)
+            val checkout = args.toCheckout()
             if (checkout == null) {
                 resultFuture.set(SessionResult(SessionResult.RESULT_ERROR_BAD_VALUE))
                 return resultFuture

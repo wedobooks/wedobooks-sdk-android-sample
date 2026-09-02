@@ -20,6 +20,7 @@ import io.wedobooks.sdk.models.WdbDownloadStatus
 import io.wedobooks.sdk.models.enums.MaterialType
 import io.wedobooks.sdk.models.enums.WdbDownloadState
 import io.wedobooks.sdk.library.wedobookssdksampleapp.services.WdbAudioPlayerSessionService
+import io.wedobooks.sdk.library.wedobookssdksampleapp.utils.toBundle
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -328,15 +329,7 @@ class WdbAudioPlayerScreenViewModel(application: Application) : AndroidViewModel
         initialProgressMs: Long?,
     ): Boolean {
         val mediaController = getOrCreateController()
-        val args = Bundle().apply {
-            putString(WdbAudioPlayerSessionService.ARG_CHECKOUT_ID, checkout.id)
-            putString(WdbAudioPlayerSessionService.ARG_MATERIAL_ID, checkout.materialId)
-            putString(WdbAudioPlayerSessionService.ARG_TITLE, checkout.title)
-            putStringArrayList(
-                WdbAudioPlayerSessionService.ARG_AUTHORS,
-                ArrayList(checkout.author)
-            )
-            putString(WdbAudioPlayerSessionService.ARG_BOOK_TYPE, checkout.type.name)
+        val args = checkout.toBundle().apply {
             putString(WdbAudioPlayerSessionService.ARG_COVER_URL, coverUrl)
             initialProgressMs?.let {
                 putLong(WdbAudioPlayerSessionService.ARG_INITIAL_PROGRESS_MS, it)
