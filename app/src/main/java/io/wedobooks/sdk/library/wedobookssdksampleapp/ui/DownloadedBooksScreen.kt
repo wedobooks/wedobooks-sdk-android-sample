@@ -57,7 +57,7 @@ fun DownloadedBooksScreen(
         ) {
             IconButton(onClick = goBack) {
                 Icon(
-                    painter = painterResource(R.drawable.ic_close),
+                    painter = painterResource(R.drawable.wdb_ic_close),
                     tint = MaterialTheme.colorScheme.onBackground,
                     contentDescription = "Close",
                 )
@@ -154,7 +154,7 @@ private fun DownloadedBookCard(isbn: String) {
             ) {
                 Icon(
                     modifier = Modifier.size(20.dp),
-                    painter = painterResource(R.drawable.ic_trashcan),
+                    painter = painterResource(R.drawable.wdb_ic_trashcan),
                     contentDescription = "Remove download",
                     tint = MaterialTheme.colorScheme.error,
                 )

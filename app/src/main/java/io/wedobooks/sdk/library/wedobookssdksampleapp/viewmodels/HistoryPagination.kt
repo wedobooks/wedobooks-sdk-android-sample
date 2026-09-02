@@ -27,7 +27,7 @@ fun shouldPrefetchHistory(
 
 /** Maps a history read failure to a user-facing message. */
 fun historyErrorMessage(throwable: Throwable): String = when (throwable) {
-    is WdbException.HistoryNotAvailableInLibraryMode -> "History is only available in streaming mode."
+    is WdbException.FeatureNotEnabled -> "History is only available in streaming mode."
     is WdbException.NoUserFound -> "Sign in to see your reading history."
     else -> "Couldn't load your reading history."
 }
@@ -37,7 +37,7 @@ fun historyWriteErrorMessage(throwable: Throwable): String = when (throwable) {
     is WdbException.AlreadyInHistory -> "Already in history"
     is WdbException.MaterialNotFound -> "No material found for that ISBN"
     is WdbException.NotInHistory -> "Not in history"
-    is WdbException.HistoryNotAvailableInLibraryMode -> "History is only available in streaming mode."
+    is WdbException.FeatureNotEnabled -> "History is only available in streaming mode."
     is WdbException.NoUserFound -> "Sign in to manage history."
     else -> "History action failed."
 }

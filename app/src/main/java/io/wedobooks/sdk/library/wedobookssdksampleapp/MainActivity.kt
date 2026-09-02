@@ -424,7 +424,7 @@ fun EasyAccess(
                             ) {
                                 Icon(
                                     modifier = Modifier.size(18.dp),
-                                    painter = painterResource(R.drawable.ic_close),
+                                    painter = painterResource(R.drawable.wdb_ic_close),
                                     contentDescription = "Dismiss easy access",
                                     tint = MaterialTheme.colorScheme.onSurface,
                                 )

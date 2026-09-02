@@ -74,7 +74,7 @@ fun DevicesScreen(
                     onClick = goBack
                 ) {
                     Icon(
-                        painter = painterResource(R.drawable.ic_close),
+                        painter = painterResource(R.drawable.wdb_ic_close),
                         tint = MaterialTheme.colorScheme.primary,
                         contentDescription = null
                     )
@@ -160,7 +160,7 @@ private fun DeviceItem(
                 onClick = onRemove
             ) {
                 Icon(
-                    painter = painterResource(R.drawable.ic_close),
+                    painter = painterResource(R.drawable.wdb_ic_close),
                     tint = MaterialTheme.colorScheme.primary,
                     contentDescription = null
                 )

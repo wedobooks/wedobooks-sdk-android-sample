@@ -184,7 +184,7 @@ private fun TopBar(title: String, onClose: () -> Unit) {
     ) {
         IconButton(onClick = onClose) {
             Icon(
-                painter = painterResource(R.drawable.ic_close),
+                painter = painterResource(R.drawable.wdb_ic_close),
                 tint = MaterialTheme.colorScheme.onBackground,
                 contentDescription = "Close",
             )
@@ -344,7 +344,7 @@ private fun TransportRow(
         ) {
             Icon(
                 modifier = Modifier.size(28.dp),
-                painter = painterResource(R.drawable.ic_back_15),
+                painter = painterResource(R.drawable.wdb_ic_back_15),
                 contentDescription = "Back 15 seconds",
             )
         }
@@ -362,7 +362,7 @@ private fun TransportRow(
             Icon(
                 modifier = Modifier.size(40.dp),
                 painter = painterResource(
-                    if (isPlaying) R.drawable.ic_pause else R.drawable.ic_play
+                    if (isPlaying) R.drawable.wdb_ic_pause else R.drawable.wdb_ic_play
                 ),
                 contentDescription = if (isPlaying) "Pause" else "Play",
             )
@@ -376,7 +376,7 @@ private fun TransportRow(
         ) {
             Icon(
                 modifier = Modifier.size(28.dp),
-                painter = painterResource(R.drawable.ic_forward_15),
+                painter = painterResource(R.drawable.wdb_ic_forward_15),
                 contentDescription = "Forward 15 seconds",
             )
         }
