@@ -14,21 +14,29 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import io.wedobooks.sdk.library.wedobookssdksampleapp.R
+import io.wedobooks.sdk.library.wedobookssdksampleapp.environment.AppEnvironment
+import io.wedobooks.sdk.library.wedobookssdksampleapp.ui.components.LoginOptionsSheet
 import io.wedobooks.sdk.library.wedobookssdksampleapp.viewmodels.LoginViewModel
 import kotlinx.coroutines.launch
 
@@ -37,9 +45,13 @@ fun LoginScreen(
     goToMainScreen: () -> Unit,
 ) {
     val vm: LoginViewModel = viewModel()
+    val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
     val isLoggedIn by vm.isLoggedIn.collectAsState(false)
     val isLoading by vm.isLoading
+
+    var uid by remember { mutableStateOf(vm.mostRecentUid.orEmpty()) }
+    var showOptions by remember { mutableStateOf(false) }
 
     LaunchedEffect(isLoggedIn) {
         if (isLoggedIn) {
@@ -113,15 +125,69 @@ fun LoginScreen(
                 textAlign = TextAlign.Center,
             )
 
+            // Only worth showing when there is something to switch between.
+            if (AppEnvironment.hasMultiple) {
+                CustomButton(
+                    modifier = Modifier.widthIn(max = 360.dp),
+                    title = AppEnvironment.current.label,
+                    color = MaterialTheme.colorScheme.secondary,
+                    textColor = MaterialTheme.colorScheme.onSecondary,
+                    onClick = { showOptions = true },
+                )
+            }
+
+            // With a remembered UID this stays a one-tap sign-in, exactly as
+            // before. Without one, the tester has to supply a UID first.
+            if (vm.mostRecentUid == null) {
+                OutlinedTextField(
+                    modifier = Modifier
+                        .widthIn(max = 360.dp)
+                        .fillMaxWidth(),
+                    value = uid,
+                    onValueChange = { uid = it },
+                    label = { Text("User ID") },
+                    singleLine = true,
+                )
+            }
+
             CustomButton(
                 modifier = Modifier.widthIn(max = 360.dp),
                 title = "Sign in",
                 isLoading = isLoading,
+                enabled = uid.isNotBlank(),
                 onClick = {
-                    coroutineScope.launch { vm.login() }
+                    coroutineScope.launch { vm.login(uid) }
                 },
             )
+
+            if (vm.mostRecentUid != null) {
+                TextButton(onClick = { showOptions = true }) {
+                    Text(
+                        text = "Signing in as $uid \u00B7 change",
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                }
+            }
         }
     }
-}
 
+    if (showOptions) {
+        LoginOptionsSheet(
+            environments = AppEnvironment.all,
+            currentEnvironmentId = AppEnvironment.current.id,
+            showEnvironments = AppEnvironment.hasMultiple,
+            rememberedUids = vm.rememberedUids,
+            onSelectEnvironment = { id -> AppEnvironment.select(context, id) },
+            onSelectUid = { selected ->
+                uid = selected
+                showOptions = false
+                coroutineScope.launch { vm.login(selected) }
+            },
+            onForgetUid = { forgotten ->
+                vm.forgetUid(forgotten)
+                if (uid == forgotten) uid = vm.mostRecentUid.orEmpty()
+            },
+            onDismiss = { showOptions = false },
+        )
+    }
+}

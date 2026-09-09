@@ -18,7 +18,7 @@ It primarily demonstrates how to sign in with a user, check out a book, and open
 - A demo user ID for use with our demo backend and a custom url to get a token
 - Reader API credentials (key and secret)
 
-These values must be added to your [`local.properties`](https://github.com/wedobooks/wedobooks-sdk-android-sample#localproperties) file. See below for details
+The Maven credentials go in your [`local.properties`](https://github.com/wedobooks/wedobooks-sdk-android-sample#localproperties) file; everything else is runtime configuration and lives in [`Environments.kt`](https://github.com/wedobooks/wedobooks-sdk-android-sample#environments). See below for details
 
 ---
 
@@ -26,21 +26,43 @@ These values must be added to your [`local.properties`](https://github.com/wedob
 
 [](https://github.com/wedobooks/wedobooks-sdk-android-sample#localproperties)
 
-The project expects the following entries in your `local.properties` file:
+The project expects the following entries in your `local.properties` file.
+These are Maven credentials for downloading the SDK artifact — no runtime
+configuration lives here any more:
 
 ```
-WDB_USER_NAME=<username>  
-WDB_PASSWORD=<password>  
-READER_API_KEY="<key>" 
-READER_API_SECRET="<secret>"  
-DEMO_USER_ID="<user-id>"
-FIREBASE_API_KEY="<firebase-api-key>"
-FIREBASE_APP_ID="<firebase-app-id>"
-FIREBASE_PROJECT_ID="<firebase-project-id>"
-CUSTOM_TOKEN_URL=<custom-url>
+WDB_USER_NAME=<username>
+WDB_PASSWORD=<password>
 ```
 
 Once you've added these values, sync the Gradle project.
+
+---
+
+### Environments
+
+[](https://github.com/wedobooks/wedobooks-sdk-android-sample#environments)
+
+Runtime configuration lives in
+`app/src/main/java/io/wedobooks/sdk/library/wedobookssdksampleapp/environment/Environments.kt`.
+Fill in the placeholder values with your Firebase config, custom-token URL and
+Colibrio reader licence.
+
+With one entry the app behaves as it always has. Add a second and an
+environment picker appears on the login screen; switching signs you out and
+restarts the app, because the SDK can only be configured once per process.
+
+Demo book ISBNs are optional and go in
+`app/src/main/java/io/wedobooks/sdk/library/wedobookssdksampleapp/books/TestBooks.kt`.
+You do not need them: any ISBN loaned from inside the app is remembered
+automatically, by title.
+
+Both files are tracked in git, so keep your own values out of commits:
+
+```bash
+git update-index --skip-worktree app/src/main/java/io/wedobooks/sdk/library/wedobookssdksampleapp/environment/Environments.kt
+git update-index --skip-worktree app/src/main/java/io/wedobooks/sdk/library/wedobookssdksampleapp/books/TestBooks.kt
+```
 
 ---
 
@@ -111,7 +133,8 @@ Working with the SDK generally follows this pattern:
   This can be checked by observing `userOperations.currentUserIdFlow`.
 
 - If no user is signed in, the sample app presents a login screen.  
-  Tapping the login button will log in with the demo user ID specified in [`local.properties`](https://github.com/wedobooks/wedobooks-sdk-android-sample#localproperties).
+  Enter a user ID and tap Sign in. Successful IDs are remembered per
+  environment, so later sign-ins are a single tap.
 
 - Once signed in, books can be checked out and opened via the `bookOperations` namespace.
 

@@ -29,6 +29,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import io.wedobooks.sdk.WeDoBooksSdk
 import io.wedobooks.sdk.library.wedobookssdksampleapp.Constants
+import io.wedobooks.sdk.library.wedobookssdksampleapp.books.TestBook
+import io.wedobooks.sdk.library.wedobookssdksampleapp.ui.components.SavedIsbnPicker
 import io.wedobooks.sdk.models.Reservation
 import io.wedobooks.sdk.models.ReservationOffer
 import kotlinx.coroutines.launch
@@ -40,7 +42,12 @@ private val dateFormatter: DateTimeFormatter = DateTimeFormatter
     .withZone(ZoneId.systemDefault())
 
 @Composable
-fun ReservationsScreen() {
+fun ReservationsScreen(
+    savedBooks: List<TestBook> = emptyList(),
+    reservingIsbns: Set<String> = emptySet(),
+    onReserveSaved: suspend (String) -> String = { "" },
+    onForgetIsbn: (String) -> Unit = {},
+) {
     val coroutineScope = rememberCoroutineScope()
     val context = LocalContext.current
     val reservations by remember { WeDoBooksSdk.reservationOperations.reservationsFlow }
@@ -62,6 +69,14 @@ fun ReservationsScreen() {
     ) {
         item(key = "reserve") {
             ReserveCard(
+                savedBooks = savedBooks,
+                reservingIsbns = reservingIsbns,
+                onReserveSaved = { saved ->
+                    coroutineScope.launch {
+                        reserveResult = onReserveSaved(saved)
+                    }
+                },
+                onForgetIsbn = onForgetIsbn,
                 isbn = isbn,
                 onIsbnChange = { isbn = it },
                 isReserving = isReserving,
@@ -161,6 +176,10 @@ fun ReservationsScreen() {
 
 @Composable
 private fun ReserveCard(
+    savedBooks: List<TestBook>,
+    reservingIsbns: Set<String>,
+    onReserveSaved: (String) -> Unit,
+    onForgetIsbn: (String) -> Unit,
     isbn: String,
     onIsbnChange: (String) -> Unit,
     isReserving: Boolean,
@@ -180,6 +199,13 @@ private fun ReserveCard(
             label = { Text("ISBN") },
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
+        )
+        SavedIsbnPicker(
+            books = savedBooks,
+            actionLabel = "RESERVE",
+            busyIsbns = reservingIsbns,
+            onAction = onReserveSaved,
+            onForget = onForgetIsbn,
         )
         CustomButton(
             title = "Reserve",

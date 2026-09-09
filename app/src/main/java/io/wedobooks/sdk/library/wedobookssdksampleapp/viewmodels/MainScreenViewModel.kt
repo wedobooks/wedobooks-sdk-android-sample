@@ -1,15 +1,21 @@
 package io.wedobooks.sdk.library.wedobookssdksampleapp.viewmodels
 
 import android.util.Log
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import io.wedobooks.sdk.WeDoBooksSdk
 import io.wedobooks.sdk.models.Checkout
 import io.wedobooks.sdk.models.WdbDownloadStatus
-import io.wedobooks.sdk.models.enums.MaterialType
 import io.wedobooks.sdk.models.enums.WdbDownloadState
+import io.wedobooks.sdk.library.wedobookssdksampleapp.books.TestBook
+import io.wedobooks.sdk.library.wedobookssdksampleapp.books.TestBooks
+import io.wedobooks.sdk.library.wedobookssdksampleapp.books.mergeBooks
+import io.wedobooks.sdk.library.wedobookssdksampleapp.environment.AppEnvironment
 import io.wedobooks.sdk.library.wedobookssdksampleapp.services.AuthService
+import io.wedobooks.sdk.library.wedobookssdksampleapp.storage.SampleStores
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -18,29 +24,89 @@ private const val TAG = "MainScreenViewModel"
 
 class MainScreenViewModel : ViewModel() {
     val authService = AuthService.instance
-    val isEbookCheckoutLoading = mutableStateOf(false)
-    val isAudioCheckoutLoading = mutableStateOf(false)
     val isAddingToHistory = mutableStateOf(false)
     val didCheckoutFail = MutableStateFlow(false)
 
-    // ask WeDoBooks for isbns for different books
-    suspend fun getCheckout(isbn: String, materialType: MaterialType): Checkout? {
-        val loader = when (materialType) {
-            MaterialType.Audiobook -> isAudioCheckoutLoading
-            MaterialType.Ebook -> isEbookCheckoutLoading
-        }
-        loader.value = true
+    /**
+     * ISBNs with a checkout in flight. Per-ISBN rather than per-type, so two
+     * ebooks requested at once do not share a single spinner.
+     */
+    val checkoutsInFlight = mutableStateOf<Set<String>>(emptySet())
 
+    /** The seed list merged with whatever this environment has remembered. */
+    var books by mutableStateOf(emptyList<TestBook>())
+        private set
+
+    /** ISBNs backed by the store, i.e. the ones that can be removed again. */
+    var rememberedIsbns by mutableStateOf(emptySet<String>())
+        private set
+
+    private val envId get() = AppEnvironment.current.id
+
+    init {
+        refreshBooks()
+    }
+
+    /**
+     * Checks [isbn] out. On success the ISBN and the title from the returned
+     * [Checkout] are remembered for this environment; on failure nothing is
+     * stored, so unreachable ISBNs never clutter the list.
+     */
+    suspend fun getCheckout(isbn: String): Checkout? {
+        val trimmed = isbn.trim()
+        if (trimmed.isEmpty()) return null
+
+        checkoutsInFlight.value = checkoutsInFlight.value + trimmed
         return try {
-            WeDoBooksSdk.bookOperations.checkoutBook(isbn)
+            val checkout = WeDoBooksSdk.bookOperations.checkoutBook(trimmed)
+            SampleStores.books.remember(envId, trimmed, checkout.title)
+            refreshBooks()
+            checkout
         } catch (e: Exception) {
             Log.d(TAG, "err: ${e.message}")
             didCheckoutFail.update { true }
             null
         } finally {
-            loader.value = false
+            checkoutsInFlight.value = checkoutsInFlight.value - trimmed
         }
+    }
 
+    /** ISBNs with a reservation request in flight. */
+    val reservationsInFlight = mutableStateOf<Set<String>>(emptySet())
+
+    /**
+     * Reserves [isbn]. Returns a user-facing result line for a toast, whether
+     * the reservation succeeded or not - the SDK reports refusals in the
+     * response rather than by throwing.
+     */
+    suspend fun reserveBook(isbn: String): String {
+        val trimmed = isbn.trim()
+        if (trimmed.isEmpty()) return "No ISBN"
+
+        reservationsInFlight.value = reservationsInFlight.value + trimmed
+        return try {
+            val response = WeDoBooksSdk.reservationOperations.reserveBook(trimmed)
+            buildString {
+                append(response.canLoan.name)
+                response.message?.takeIf { it.isNotBlank() }?.let { append(" \u00B7 "); append(it) }
+            }
+        } catch (t: Throwable) {
+            Log.d(TAG, "reserve err: ${t.message}")
+            "Error: ${t.cause?.message ?: t.message}"
+        } finally {
+            reservationsInFlight.value = reservationsInFlight.value - trimmed
+        }
+    }
+
+    fun forgetBook(isbn: String) {
+        SampleStores.books.forget(envId, isbn)
+        refreshBooks()
+    }
+
+    private fun refreshBooks() {
+        val remembered = SampleStores.books.all(envId)
+        books = mergeBooks(TestBooks.seed, remembered)
+        rememberedIsbns = remembered.map { it.isbn }.toSet()
     }
 
     /**

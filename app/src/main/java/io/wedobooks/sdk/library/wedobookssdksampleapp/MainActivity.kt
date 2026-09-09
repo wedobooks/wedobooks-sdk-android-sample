@@ -41,6 +41,8 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
+import androidx.navigation.NavType
+import androidx.navigation.navArgument
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
@@ -159,17 +161,17 @@ class MainActivity : ComponentActivity() {
                                 goToDevices = {
                                     mainNavController.navigate(Routes.devices)
                                 },
-                                goToSampleEbook = {
-                                    mainNavController.navigate(Routes.sampleEbook)
+                                goToSampleEbook = { isbn ->
+                                    mainNavController.navigate(Routes.sampleEbookRoute(isbn))
                                 },
-                                goToSampleAudiobook = {
-                                    mainNavController.navigate(Routes.sampleAudiobook)
+                                goToSampleAudiobook = { isbn ->
+                                    mainNavController.navigate(Routes.sampleAudiobookRoute(isbn))
                                 },
-                                goToHeadlessSampleAudio = {
-                                    mainNavController.navigate(Routes.headlessSampleAudio)
+                                goToHeadlessSampleAudio = { isbn ->
+                                    mainNavController.navigate(Routes.headlessSampleAudioRoute(isbn))
                                 },
-                                goToWdbSampleAudio = {
-                                    mainNavController.navigate(Routes.wdbSampleAudio)
+                                goToWdbSampleAudio = { isbn ->
+                                    mainNavController.navigate(Routes.wdbSampleAudioRoute(isbn))
                                 },
                                 toggleDarkMode = {
                                     isDarkMode = !isDarkMode
@@ -250,9 +252,15 @@ class MainActivity : ComponentActivity() {
                                 }
                             )
                         }
-                        composable(route = Routes.sampleEbook) {
+                        composable(
+                            route = Routes.sampleEbook,
+                            arguments = listOf(navArgument(Routes.ISBN_ARG) {
+                                type = NavType.StringType
+                            }),
+                        ) { backStackEntry ->
                             WeDoBooksSdk.bookOperations.SampleBookScreen(
-                                isbn = Constants.E_BOOK,
+                                isbn = backStackEntry.arguments
+                                    ?.getString(Routes.ISBN_ARG).orEmpty(),
                                 materialType = MaterialType.Ebook,
                                 cover = null,
                                 onCloseClick = {
@@ -262,9 +270,15 @@ class MainActivity : ComponentActivity() {
                                 metadata = null,
                             )
                         }
-                        composable(route = Routes.sampleAudiobook) {
+                        composable(
+                            route = Routes.sampleAudiobook,
+                            arguments = listOf(navArgument(Routes.ISBN_ARG) {
+                                type = NavType.StringType
+                            }),
+                        ) { backStackEntry ->
                             WeDoBooksSdk.bookOperations.SampleBookScreen(
-                                isbn = Constants.AUDIO_BOOK,
+                                isbn = backStackEntry.arguments
+                                    ?.getString(Routes.ISBN_ARG).orEmpty(),
                                 materialType = MaterialType.Audiobook,
                                 cover = null,
                                 onCloseClick = {
@@ -274,15 +288,27 @@ class MainActivity : ComponentActivity() {
                                 metadata = null,
                             )
                         }
-                        composable(route = Routes.headlessSampleAudio) {
+                        composable(
+                            route = Routes.headlessSampleAudio,
+                            arguments = listOf(navArgument(Routes.ISBN_ARG) {
+                                type = NavType.StringType
+                            }),
+                        ) { backStackEntry ->
                             HeadlessAudioSampleScreen(
-                                isbn = Constants.AUDIO_BOOK,
+                                isbn = backStackEntry.arguments
+                                    ?.getString(Routes.ISBN_ARG).orEmpty(),
                                 goBack = { mainNavController.popBackStack() },
                             )
                         }
-                        composable(route = Routes.wdbSampleAudio) {
+                        composable(
+                            route = Routes.wdbSampleAudio,
+                            arguments = listOf(navArgument(Routes.ISBN_ARG) {
+                                type = NavType.StringType
+                            }),
+                        ) { backStackEntry ->
                             WdbAudioPlayerSampleScreen(
-                                isbn = Constants.AUDIO_BOOK,
+                                isbn = backStackEntry.arguments
+                                    ?.getString(Routes.ISBN_ARG).orEmpty(),
                                 goBack = { mainNavController.popBackStack() },
                             )
                         }

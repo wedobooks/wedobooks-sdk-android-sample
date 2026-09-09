@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -48,6 +49,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import io.wedobooks.sdk.WeDoBooksSdk
 import io.wedobooks.sdk.library.wedobookssdksampleapp.Constants
+import io.wedobooks.sdk.library.wedobookssdksampleapp.ui.components.SavedIsbnPicker
 import io.wedobooks.sdk.library.wedobookssdksampleapp.viewmodels.MainScreenViewModel
 import io.wedobooks.sdk.models.Checkout
 import io.wedobooks.sdk.models.SdkMode
@@ -55,12 +57,6 @@ import io.wedobooks.sdk.models.WdbDownloadStatus
 import io.wedobooks.sdk.models.enums.MaterialType
 import io.wedobooks.sdk.models.enums.WdbDownloadState
 import kotlinx.coroutines.launch
-
-private data class TestMaterial(
-    val isbn: String,
-    val type: MaterialType,
-    val label: String,
-)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -72,28 +68,13 @@ fun MainScreen(
     goToLogin: () -> Unit,
     goToDownloadedBooks: () -> Unit,
     goToDevices: () -> Unit,
-    goToSampleEbook: () -> Unit,
-    goToSampleAudiobook: () -> Unit,
-    goToHeadlessSampleAudio: () -> Unit,
-    goToWdbSampleAudio: () -> Unit,
+    goToSampleEbook: (String) -> Unit,
+    goToSampleAudiobook: (String) -> Unit,
+    goToHeadlessSampleAudio: (String) -> Unit,
+    goToWdbSampleAudio: (String) -> Unit,
     toggleDarkMode: () -> Unit,
 ) {
     val vm: MainScreenViewModel = viewModel()
-    val testMaterials = remember {
-        listOf(
-            TestMaterial(
-                isbn = Constants.E_BOOK,
-                type = MaterialType.Ebook,
-                label = "Ebook",
-            ),
-            TestMaterial(
-                isbn = Constants.AUDIO_BOOK,
-                type = MaterialType.Audiobook,
-                label = "Audiobook",
-            ),
-        )
-    }
-
     val tabs = remember {
         listOfNotNull(
             "Checkouts",
@@ -140,7 +121,6 @@ fun MainScreen(
             when (tabs[selectedTab]) {
                 "Checkouts" -> CheckoutsTab(
                     vm = vm,
-                    testMaterials = testMaterials,
                     setCheckout = setCheckout,
                     goToReader = goToReader,
                     goToHeadlessAudio = goToHeadlessAudio,
@@ -153,7 +133,12 @@ fun MainScreen(
 
                 "Stats" -> StatsTab()
 
-                "Reservations" -> ReservationsScreen()
+                "Reservations" -> ReservationsScreen(
+                    savedBooks = vm.books,
+                    reservingIsbns = vm.reservationsInFlight.value,
+                    onReserveSaved = { isbn -> vm.reserveBook(isbn) },
+                    onForgetIsbn = { vm.forgetBook(it) },
+                )
 
                 "Settings" -> SettingsTab(
                     vm = vm,
@@ -174,25 +159,21 @@ fun MainScreen(
 @Composable
 private fun CheckoutsTab(
     vm: MainScreenViewModel,
-    testMaterials: List<TestMaterial>,
     setCheckout: (Checkout) -> Unit,
     goToReader: () -> Unit,
     goToHeadlessAudio: () -> Unit,
     goToWdbAudioPlayer: () -> Unit,
-    goToSampleEbook: () -> Unit,
-    goToSampleAudiobook: () -> Unit,
-    goToHeadlessSampleAudio: () -> Unit,
-    goToWdbSampleAudio: () -> Unit,
+    goToSampleEbook: (String) -> Unit,
+    goToSampleAudiobook: (String) -> Unit,
+    goToHeadlessSampleAudio: (String) -> Unit,
+    goToWdbSampleAudio: (String) -> Unit,
 ) {
-    val coroutineScope = rememberCoroutineScope()
     val allCheckouts by remember { WeDoBooksSdk.bookOperations.allCheckoutsFlow() }
         .collectAsState(initial = emptyList())
     val bookDownloads by WeDoBooksSdk.storageOperations.bookDownloadsFlow.collectAsState(
         initial = emptyMap()
     )
-
-    val isEbookLoading by vm.isEbookCheckoutLoading
-    val isAudioBookLoading by vm.isAudioCheckoutLoading
+    var showLoanSheet by remember { mutableStateOf(false) }
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -200,14 +181,30 @@ private fun CheckoutsTab(
         verticalArrangement = Arrangement.spacedBy(12.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        testMaterials.forEach { material ->
-            item(key = "material-${material.isbn}") {
-                val checkout = allCheckouts.firstOrNull { it.materialId == material.isbn }
-                val isLoading = when (material.type) {
-                    MaterialType.Audiobook -> isAudioBookLoading
-                    MaterialType.Ebook -> isEbookLoading
-                }
-                val downloadStatus = bookDownloads[material.isbn]
+        item(key = "loan-a-book") {
+            CustomButton(
+                title = "Loan a book by ISBN",
+                onClick = { showLoanSheet = true },
+            )
+        }
+
+        // -- Active checkouts: the real state, whatever its origin ----------
+        item(key = "checkouts-header") {
+            SectionHeader(title = "Active checkouts (${allCheckouts.size})")
+        }
+        if (allCheckouts.isEmpty()) {
+            item(key = "checkouts-empty") {
+                Text(
+                    text = "Nothing checked out in this environment.",
+                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
+                    style = MaterialTheme.typography.bodyMedium,
+                    textAlign = TextAlign.Center,
+                )
+            }
+        }
+        allCheckouts.forEach { checkout ->
+            item(key = "checkout-${checkout.id}") {
+                val downloadStatus = bookDownloads[checkout.materialId]
 
                 // Optimistic flag for the download button. Flipped to true the
                 // moment the user clicks Download / Remove so the UI changes
@@ -217,100 +214,88 @@ private fun CheckoutsTab(
                 // We snapshot the pre-click state and clear the flag as soon
                 // as the real state diverges, handing control back to the
                 // SDK-driven status.
-                var isTogglePending by remember(material.isbn) { mutableStateOf(false) }
-                var stateAtClick: WdbDownloadState? by remember(material.isbn) { mutableStateOf(null) }
+                var isTogglePending by remember(checkout.materialId) { mutableStateOf(false) }
+                var stateAtClick: WdbDownloadState? by remember(checkout.materialId) {
+                    mutableStateOf(null)
+                }
                 LaunchedEffect(downloadStatus?.state) {
                     if (isTogglePending && downloadStatus?.state != stateAtClick) {
                         isTogglePending = false
                     }
                 }
 
-                MaterialCard(
-                    material = material,
+                BookCard(
                     checkout = checkout,
-                    isLoading = isLoading,
                     downloadStatus = downloadStatus,
                     isTogglePending = isTogglePending,
-                    onRequestCheckout = {
-                        coroutineScope.launch {
-                            vm.getCheckout(
-                                isbn = material.isbn,
-                                materialType = material.type
-                            )
-                        }
-                    },
+                    canRemove = vm.rememberedIsbns.contains(checkout.materialId),
                     onOpen = {
-                        checkout?.let {
-                            setCheckout(it)
-                            goToReader()
-                        }
+                        setCheckout(checkout)
+                        goToReader()
                     },
                     onHeadlessAudio = {
-                        checkout?.let {
-                            setCheckout(it)
-                            goToHeadlessAudio()
-                        }
+                        setCheckout(checkout)
+                        goToHeadlessAudio()
                     },
                     onWdbAudioPlayer = {
-                        checkout?.let {
-                            setCheckout(it)
-                            goToWdbAudioPlayer()
-                        }
+                        setCheckout(checkout)
+                        goToWdbAudioPlayer()
                     },
-                    onOpenSample = when (material.type) {
-                        MaterialType.Ebook -> goToSampleEbook
-                        MaterialType.Audiobook -> goToSampleAudiobook
-                    },
-                    onHeadlessSample = if (material.type == MaterialType.Audiobook) {
-                        goToHeadlessSampleAudio
-                    } else null,
-                    onWdbSample = if (material.type == MaterialType.Audiobook) {
-                        goToWdbSampleAudio
-                    } else null,
                     onToggleDownload = {
-                        checkout?.let {
-                            stateAtClick = downloadStatus?.state
-                            isTogglePending = true
-                            vm.toggleDownload(it, downloadStatus)
-                        }
+                        stateAtClick = downloadStatus?.state
+                        isTogglePending = true
+                        vm.toggleDownload(checkout, downloadStatus)
                     },
+                    onReadSample = { goToSampleEbook(checkout.materialId) },
+                    onPlaySample = { goToSampleAudiobook(checkout.materialId) },
+                    onHeadlessSample = { goToHeadlessSampleAudio(checkout.materialId) },
+                    onWdbSample = { goToWdbSampleAudio(checkout.materialId) },
+                    onRemove = { vm.forgetBook(checkout.materialId) },
                 )
             }
         }
     }
+
+    if (showLoanSheet) {
+        LoanBookSheet(vm = vm, onDismiss = { showLoanSheet = false })
+    }
 }
 
+/**
+ * One active checkout. Everything shown comes from the [Checkout] itself -
+ * the book model carries no type, and `checkout.type` decides which open
+ * actions apply.
+ */
 @Composable
-private fun MaterialCard(
-    material: TestMaterial,
-    checkout: Checkout?,
-    isLoading: Boolean,
+private fun BookCard(
+    checkout: Checkout,
     downloadStatus: WdbDownloadStatus?,
     isTogglePending: Boolean,
-    onRequestCheckout: () -> Unit,
+    /** Only books the store remembers can be dropped from the saved list. */
+    canRemove: Boolean,
     onOpen: () -> Unit,
     onHeadlessAudio: () -> Unit,
     onWdbAudioPlayer: () -> Unit,
-    onOpenSample: () -> Unit,
-    /** Optional headless-sample button (only audiobooks expose this in the SDK). */
-    onHeadlessSample: (() -> Unit)?,
-    /** Optional WdbAudioPlayer-sample button with custom UI (audiobooks only). */
-    onWdbSample: (() -> Unit)?,
     onToggleDownload: () -> Unit,
+    onReadSample: () -> Unit,
+    onPlaySample: () -> Unit,
+    onHeadlessSample: () -> Unit,
+    onWdbSample: () -> Unit,
+    onRemove: () -> Unit,
 ) {
     val downloadUiState = downloadStatus.toDownloadButtonState(
-        hasSelectedCheckout = checkout != null,
+        hasSelectedCheckout = true,
         isTogglePending = isTogglePending,
     )
+    val isAudiobook = checkout.type == MaterialType.Audiobook
+
     ElevatedCard(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.elevatedCardColors(
             containerColor = MaterialTheme.colorScheme.surfaceVariant,
         ),
-        elevation = CardDefaults.elevatedCardElevation(
-            defaultElevation = 2.dp,
-        ),
+        elevation = CardDefaults.elevatedCardElevation(defaultElevation = 2.dp),
     ) {
         Column(
             modifier = Modifier
@@ -321,87 +306,150 @@ private fun MaterialCard(
             // -- Header --------------------------------------------------------
             Column(modifier = Modifier.fillMaxWidth()) {
                 Text(
-                    text = material.label,
+                    text = checkout.title.ifBlank { checkout.materialId },
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold,
                 )
+                val authors = checkout.author.joinToString(", ")
+                if (authors.isNotBlank()) {
+                    Text(
+                        text = authors,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                        style = MaterialTheme.typography.labelSmall,
+                    )
+                }
                 Text(
-                    text = "ISBN ${material.isbn}",
+                    text = "ISBN ${checkout.materialId} \u00B7 ${checkout.type.name}",
                     color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
                     style = MaterialTheme.typography.bodySmall,
-                )
-            }
-            // -- Status -------------------------------------------------------
-            if (checkout != null) {
-                Column(modifier = Modifier.fillMaxWidth()) {
-                    Text(
-                        text = checkout.title.ifBlank { "Untitled" },
-                        color = MaterialTheme.colorScheme.primary,
-                        style = MaterialTheme.typography.labelLarge,
-                        fontWeight = FontWeight.SemiBold,
-                    )
-                    val authors = checkout.author.joinToString(", ")
-                    if (authors.isNotBlank()) {
-                        Text(
-                            text = authors,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
-                            style = MaterialTheme.typography.labelSmall,
-                        )
-                    }
-                }
-            } else {
-                Text(
-                    text = "Not checked out yet",
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
-                    style = MaterialTheme.typography.labelMedium,
                 )
             }
 
             // -- Checkout actions ---------------------------------------------
             CardSectionHeader(title = "Checkout")
-            if (checkout == null) {
-                CustomButton(
-                    title = "Request checkout",
-                    isLoading = isLoading,
-                    onClick = onRequestCheckout,
-                )
-            } else {
-                val openLabel = when (material.type) {
-                    MaterialType.Audiobook -> "Play (SDK player)"
-                    MaterialType.Ebook -> "Read (SDK reader)"
-                }
-                CustomButton(title = openLabel, onClick = onOpen)
-                if (material.type == MaterialType.Audiobook) {
-                    CustomButton(title = "Play (headless · custom UI)", onClick = onHeadlessAudio)
-                    CustomButton(title = "Play (Media3 builder)", onClick = onWdbAudioPlayer)
-                }
-                CustomButton(
-                    title = downloadUiState.title,
-                    enabled = downloadUiState.enabled,
-                    onClick = onToggleDownload,
-                )
+            CustomButton(
+                title = if (isAudiobook) "Play (SDK player)" else "Read (SDK reader)",
+                onClick = onOpen,
+            )
+            if (isAudiobook) {
+                CustomButton(title = "Play (headless \u00B7 custom UI)", onClick = onHeadlessAudio)
+                CustomButton(title = "Play (Media3 builder)", onClick = onWdbAudioPlayer)
             }
+            CustomButton(
+                title = downloadUiState.title,
+                enabled = downloadUiState.enabled,
+                onClick = onToggleDownload,
+            )
 
             // -- Sample actions (no checkout needed) ---------------------------
+            // SampleBookScreen needs a MaterialType, and a sample can be opened
+            // without a checkout at all, so the button supplies the type rather
+            // than the book carrying one. A mismatch simply fails.
             CardSectionHeader(title = "Sample")
-            val sampleLabel = when (material.type) {
-                MaterialType.Audiobook -> "Play sample (SDK player)"
-                MaterialType.Ebook -> "Read sample (SDK reader)"
-            }
-            CustomButton(title = sampleLabel, onClick = onOpenSample)
-            if (onHeadlessSample != null) {
+            CustomButton(title = "Read sample (SDK reader)", onClick = onReadSample)
+            CustomButton(title = "Play sample (SDK player)", onClick = onPlaySample)
+            CustomButton(title = "Play sample (headless \u00B7 custom UI)", onClick = onHeadlessSample)
+            CustomButton(title = "Play sample (Media3 builder \u00B7 custom UI)", onClick = onWdbSample)
+
+            if (canRemove) {
                 CustomButton(
-                    title = "Play sample (headless · custom UI)",
-                    onClick = onHeadlessSample,
+                    title = "Remove from saved ISBNs",
+                    color = MaterialTheme.colorScheme.secondary,
+                    textColor = MaterialTheme.colorScheme.onSecondary,
+                    onClick = onRemove,
                 )
             }
-            if (onWdbSample != null) {
-                CustomButton(
-                    title = "Play sample (Media3 builder · custom UI)",
-                    onClick = onWdbSample,
-                )
-            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun LoanBookSheet(
+    vm: MainScreenViewModel,
+    onDismiss: () -> Unit,
+) {
+    val sheetState = rememberModalBottomSheetState()
+    val coroutineScope = rememberCoroutineScope()
+    val context = LocalContext.current
+    val inFlight by vm.checkoutsInFlight
+    var isbn by remember { mutableStateOf("") }
+
+    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 24.dp)
+                .padding(bottom = 32.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Text(
+                text = "Loan a book",
+                color = MaterialTheme.colorScheme.onSurface,
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.SemiBold,
+            )
+            Text(
+                text = "Checks the ISBN out straight away. It is only added to " +
+                    "your list if the loan succeeds, and it is remembered by title.",
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+                style = MaterialTheme.typography.bodyMedium,
+            )
+            OutlinedTextField(
+                value = isbn,
+                onValueChange = { isbn = it },
+                label = { Text("ISBN") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+            )
+            SavedIsbnPicker(
+                books = vm.books,
+                actionLabel = "LOAN",
+                busyIsbns = inFlight,
+                onAction = { saved ->
+                    coroutineScope.launch {
+                        val checkout = vm.getCheckout(saved)
+                        Toast.makeText(
+                            context,
+                            if (checkout != null) {
+                                "Loaned ${checkout.title.ifBlank { saved }}"
+                            } else {
+                                "Could not loan $saved"
+                            },
+                            Toast.LENGTH_SHORT,
+                        ).show()
+                        if (checkout != null) onDismiss()
+                    }
+                },
+                onForget = { vm.forgetBook(it) },
+            )
+            CustomButton(
+                title = "Loan",
+                isLoading = inFlight.contains(isbn.trim()),
+                enabled = isbn.isNotBlank(),
+                onClick = {
+                    val target = isbn.trim()
+                    coroutineScope.launch {
+                        val checkout = vm.getCheckout(target)
+                        if (checkout != null) {
+                            isbn = ""
+                            onDismiss()
+                            Toast.makeText(
+                                context,
+                                "Loaned ${checkout.title.ifBlank { target }}",
+                                Toast.LENGTH_SHORT,
+                            ).show()
+                        } else {
+                            Toast.makeText(
+                                context,
+                                "Could not loan $target",
+                                Toast.LENGTH_SHORT,
+                            ).show()
+                        }
+                    }
+                },
+            )
         }
     }
 }
