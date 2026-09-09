@@ -125,7 +125,6 @@ fun LoginScreen(
                 textAlign = TextAlign.Center,
             )
 
-            // Only worth showing when there is something to switch between.
             if (AppEnvironment.hasMultiple) {
                 CustomButton(
                     modifier = Modifier.widthIn(max = 360.dp),
@@ -136,8 +135,6 @@ fun LoginScreen(
                 )
             }
 
-            // With a remembered UID this stays a one-tap sign-in, exactly as
-            // before. Without one, the tester has to supply a UID first.
             if (vm.mostRecentUid == null) {
                 OutlinedTextField(
                     modifier = Modifier

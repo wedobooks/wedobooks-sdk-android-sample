@@ -10,11 +10,6 @@ object Routes {
     val downloadedBooks = "downloaded_books"
     val devices = "devices"
 
-    /**
-     * Sample routes carry the ISBN of the book being sampled. Samples work
-     * without a checkout, so the ISBN cannot come from selected state the way
-     * the reader and player routes get theirs.
-     */
     const val ISBN_ARG = "isbn"
 
     val sampleEbook = "sample_ebook/{$ISBN_ARG}"

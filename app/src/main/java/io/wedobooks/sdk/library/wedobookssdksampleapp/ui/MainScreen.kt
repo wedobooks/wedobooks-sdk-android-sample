@@ -1,6 +1,8 @@
 package io.wedobooks.sdk.library.wedobookssdksampleapp.ui
 
 import android.widget.Toast
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -175,6 +177,12 @@ private fun CheckoutsTab(
     )
     var showLoanSheet by remember { mutableStateOf(false) }
 
+    val checkouts = allCheckouts
+        .sortedByDescending { it.active }
+        .distinctBy { it.materialId }
+
+    LaunchedEffect(checkouts) { vm.rememberCheckouts(checkouts) }
+
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
@@ -188,11 +196,10 @@ private fun CheckoutsTab(
             )
         }
 
-        // -- Active checkouts: the real state, whatever its origin ----------
         item(key = "checkouts-header") {
-            SectionHeader(title = "Active checkouts (${allCheckouts.size})")
+            SectionHeader(title = "Active checkouts (${checkouts.size})")
         }
-        if (allCheckouts.isEmpty()) {
+        if (checkouts.isEmpty()) {
             item(key = "checkouts-empty") {
                 Text(
                     text = "Nothing checked out in this environment.",
@@ -202,8 +209,8 @@ private fun CheckoutsTab(
                 )
             }
         }
-        allCheckouts.forEach { checkout ->
-            item(key = "checkout-${checkout.id}") {
+        checkouts.forEach { checkout ->
+            item(key = "checkout-${checkout.materialId}") {
                 val downloadStatus = bookDownloads[checkout.materialId]
 
                 // Optimistic flag for the download button. Flipped to true the
@@ -343,9 +350,6 @@ private fun BookCard(
             )
 
             // -- Sample actions (no checkout needed) ---------------------------
-            // SampleBookScreen needs a MaterialType, and a sample can be opened
-            // without a checkout at all, so the button supplies the type rather
-            // than the book carrying one. A mismatch simply fails.
             CardSectionHeader(title = "Sample")
             CustomButton(title = "Read sample (SDK reader)", onClick = onReadSample)
             CustomButton(title = "Play sample (SDK player)", onClick = onPlaySample)
@@ -380,6 +384,7 @@ private fun LoanBookSheet(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
+                .verticalScroll(rememberScrollState())
                 .padding(horizontal = 24.dp)
                 .padding(bottom = 32.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -475,9 +480,11 @@ private fun CardSectionHeader(title: String) {
 private fun StatsTab() {
     val allCheckouts by remember { WeDoBooksSdk.bookOperations.allCheckoutsFlow() }
         .collectAsState(initial = emptyList())
-    // StatsScreen now pages through one stats pane per checkout (after the
-    // year pane), so all active checkouts are shown.
-    StatsScreen(checkouts = allCheckouts)
+    StatsScreen(
+        checkouts = allCheckouts
+            .sortedByDescending { it.active }
+            .distinctBy { it.materialId },
+    )
 }
 
 // ---------------------------------------------------------------------------

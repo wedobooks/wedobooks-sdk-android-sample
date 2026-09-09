@@ -1,5 +1,7 @@
 package io.wedobooks.sdk.library.wedobookssdksampleapp.ui.components
 
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -26,11 +28,6 @@ import androidx.compose.ui.unit.dp
 import io.wedobooks.sdk.library.wedobookssdksampleapp.environment.SampleEnvironment
 import io.wedobooks.sdk.library.wedobookssdksampleapp.ui.CustomButton
 
-/**
- * Login options: which environment to run against and which account to use.
- *
- * Picking an environment restarts the app, so it is confirmed first.
- */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LoginOptionsSheet(
@@ -51,6 +48,7 @@ fun LoginOptionsSheet(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
+                .verticalScroll(rememberScrollState())
                 .padding(horizontal = 24.dp)
                 .padding(bottom = 32.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),

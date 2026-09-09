@@ -4,16 +4,7 @@ import android.content.Context
 import android.content.Intent
 import io.wedobooks.sdk.library.wedobookssdksampleapp.services.AuthService
 
-/**
- * Signs out and hard-restarts the process.
- *
- * `WeDoBooksSdk.setup()` is one-shot per process, so a new environment can only
- * take effect after a fresh start. Signing out first avoids leaving behind a
- * session that belongs to a different Firebase project.
- *
- * The kill also tears down `WdbAudioPlayerSessionService`, which is what we
- * want when the backend changes underneath it.
- */
+/** `WeDoBooksSdk.setup()` is one-shot per process, so a new environment needs a fresh one. */
 fun Context.restartApp() {
     AuthService.instance.logout()
 

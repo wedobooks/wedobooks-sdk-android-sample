@@ -98,6 +98,27 @@ class MainScreenViewModel : ViewModel() {
         }
     }
 
+    /**
+     * Saves every active checkout as a shortcut, titles included.
+     *
+     * A checkout knows its title, so this is what turns a bare ISBN in the
+     * saved list into a readable name - and it picks up books loaned outside
+     * this app entirely.
+     */
+    fun rememberCheckouts(checkouts: List<Checkout>) {
+        if (checkouts.isEmpty()) return
+        SampleStores.books.rememberAll(
+            envId,
+            checkouts.map { checkout ->
+                TestBook(
+                    isbn = checkout.materialId,
+                    title = checkout.title.takeIf { it.isNotBlank() },
+                )
+            },
+        )
+        refreshBooks()
+    }
+
     fun forgetBook(isbn: String) {
         SampleStores.books.forget(envId, isbn)
         refreshBooks()

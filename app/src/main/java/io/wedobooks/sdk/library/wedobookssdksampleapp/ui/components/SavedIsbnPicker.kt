@@ -21,15 +21,6 @@ import androidx.compose.ui.unit.dp
 import io.wedobooks.sdk.library.wedobookssdksampleapp.books.TestBook
 import io.wedobooks.sdk.library.wedobookssdksampleapp.ui.Spinner
 
-/**
- * Saved books as one-tap actions, shown wherever an ISBN would otherwise be
- * typed.
- *
- * Each entry is a button that performs the action immediately rather than
- * filling the text field - the field is for ISBNs you have not saved yet.
- * Entries are labelled with the title, which a book gains the first time it is
- * loaned; before that there is only the ISBN to show.
- */
 @Composable
 fun SavedIsbnPicker(
     books: List<TestBook>,
@@ -63,14 +54,6 @@ fun SavedIsbnPicker(
     }
 }
 
-/**
- * Styled to match `CustomButton`, but with the dismiss affordance *inside* the
- * button rather than beside it, so the row reads as one full-width control
- * instead of a button that looks clipped.
- *
- * The inner clickable consumes the tap, so hitting the cross forgets the book
- * without also triggering the action.
- */
 @Composable
 private fun SavedBookButton(
     book: TestBook,
@@ -99,8 +82,6 @@ private fun SavedBookButton(
                 Text(
                     modifier = Modifier
                         .align(Alignment.Center)
-                        // Keep the label clear of the cross on either side so a
-                        // long title stays visually centred.
                         .padding(horizontal = 56.dp),
                     text = book.displayName,
                     color = MaterialTheme.colorScheme.onPrimary,
