@@ -1,5 +1,3 @@
-import java.util.Properties
-
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -18,35 +16,6 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-
-        buildConfigField(
-            "String", "READER_API_KEY",
-            getLocalProperty("READER_API_KEY").toString()
-        )
-        buildConfigField(
-            "String", "READER_API_SECRET",
-            getLocalProperty("READER_API_SECRET").toString()
-        )
-        buildConfigField(
-            "String", "DEMO_USER_ID",
-            getLocalProperty("DEMO_USER_ID").toString()
-        )
-        buildConfigField(
-            "String", "FIREBASE_API_KEY",
-            getLocalProperty("FIREBASE_API_KEY").toString()
-        )
-        buildConfigField(
-            "String", "FIREBASE_APP_ID",
-            getLocalProperty("FIREBASE_APP_ID").toString()
-        )
-        buildConfigField(
-            "String", "FIREBASE_PROJECT_ID",
-            getLocalProperty("FIREBASE_PROJECT_ID").toString()
-        )
-        buildConfigField(
-            "String", "CUSTOM_TOKEN_URL",
-            getLocalProperty("CUSTOM_TOKEN_URL").toString()
-        )
     }
 
     buildTypes {
@@ -91,13 +60,4 @@ dependencies {
     implementation(libs.androidx.navigation.compose)
     implementation(libs.okhttp)
     implementation(libs.androidx.media3.session)
-}
-
-fun getLocalProperty(key: String): String? {
-    val localPropertiesFile = rootDir.resolve("local.properties")
-    if (!localPropertiesFile.exists()) return null
-
-    val props = Properties()
-    localPropertiesFile.inputStream().use { props.load(it) }
-    return props.getProperty(key)
 }

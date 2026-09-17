@@ -40,7 +40,6 @@ import io.wedobooks.sdk.library.wedobookssdksampleapp.viewmodels.HistoryPagerVie
 import io.wedobooks.sdk.library.wedobookssdksampleapp.viewmodels.HistoryUiState
 import io.wedobooks.sdk.models.HistoryItem
 import io.wedobooks.sdk.models.enums.HistoryStatus
-import io.wedobooks.sdk.models.enums.MaterialType
 
 /**
  * A horizontal pager of the signed-in user's reading/listening history — one
@@ -223,10 +222,7 @@ private fun HistoryItemCard(
                                 ) {
                                     Icon(
                                         modifier = Modifier.size(44.dp),
-                                        painter = when (item.type) {
-                                            MaterialType.Ebook -> painterResource(R.drawable.ic_book)
-                                            MaterialType.Audiobook -> painterResource(R.drawable.ic_audiobook)
-                                        },
+                                        painter = painterResource(item.type.iconRes()),
                                         contentDescription = null,
                                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
                                     )

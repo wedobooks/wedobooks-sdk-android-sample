@@ -1,14 +1,21 @@
 package io.wedobooks.sdk.library.wedobookssdksampleapp
 
+import io.wedobooks.sdk.library.wedobookssdksampleapp.environment.AppEnvironment
 import io.wedobooks.sdk.models.SdkMode
 
+// get() accessors, not vals: an object's eager vals all initialise on first
+// touch of any member, so one unfilled placeholder takes down every read.
 object Constants {
-    val SDK_APP_ID = BuildConfig.FIREBASE_APP_ID
-    val SDK_API_KEY = BuildConfig.FIREBASE_API_KEY
-    val SDK_PROJECT_ID = BuildConfig.FIREBASE_PROJECT_ID
-    val E_BOOK: String = TODO("insert ebook isbn")
-    val AUDIO_BOOK: String = TODO("insert audiobook isbn")
-    val RESERVATION_BOOK: String? = TODO("insert reservation book isbn")
-    // Choose the SDK mode: SdkMode.Library or SdkMode.Streaming
-    val SDK_MODE: SdkMode = TODO("insert SDK mode, e.g. SdkMode.Streaming")
+    private val env get() = AppEnvironment.current
+
+    val SDK_APP_ID: String get() = env.firebaseAppId
+    val SDK_API_KEY: String get() = env.firebaseApiKey
+    val SDK_PROJECT_ID: String get() = env.firebaseProjectId
+    val CUSTOM_TOKEN_URL: String get() = env.customTokenUrl
+    val READER_API_KEY: String get() = env.readerApiKey
+    val READER_API_SECRET: String get() = env.readerApiSecret
+    val SDK_MODE: SdkMode get() = env.sdkMode
+
+    /** Pre-fills the reserve field on the Reservations tab. */
+    val RESERVATION_BOOK: String? get() = null
 }

@@ -17,6 +17,7 @@ import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ElevatedCard
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -30,6 +31,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -37,6 +39,7 @@ import io.wedobooks.sdk.library.wedobookssdksampleapp.ui.components.PagerDots
 import io.wedobooks.sdk.library.wedobookssdksampleapp.viewmodels.StatsScreenViewModel
 import io.wedobooks.sdk.models.Checkout
 import io.wedobooks.sdk.models.StatData
+import io.wedobooks.sdk.models.enums.MaterialType
 import kotlinx.coroutines.flow.Flow
 import java.text.SimpleDateFormat
 import java.util.Calendar
@@ -162,6 +165,7 @@ fun StatsScreen(
                 val stats by (flow ?: emptyMapFlow()).collectAsState(emptyMap())
                 StatsView(
                     title = checkout?.title?.takeIf { it.isNotBlank() } ?: "Untitled checkout",
+                    type = checkout?.type,
                     subtitle = if (selectedDate != null) {
                         "on $selectedDateText"
                     } else "all time",
@@ -184,6 +188,7 @@ private fun emptyMapFlow(): Flow<Map<String, StatData>> = kotlinx.coroutines.flo
 internal fun StatsView(
     title: String,
     subtitle: String,
+    type: MaterialType? = null,
     selectedDate: Date?,
     selectedDateText: String,
     stats: Map<String, StatData>,
@@ -198,6 +203,8 @@ internal fun StatsView(
                         ebookMinutes = newStat.ebookMinutes + value.ebookMinutes,
                         audioSeconds = newStat.audioSeconds + value.audioSeconds,
                         ebookSeconds = newStat.ebookSeconds + value.ebookSeconds,
+                        podcastMinutes = newStat.podcastMinutes + value.podcastMinutes,
+                        podcastSeconds = newStat.podcastSeconds + value.podcastSeconds,
                         wordsRead = newStat.wordsRead + value.wordsRead,
                     )
                 }
@@ -209,6 +216,8 @@ internal fun StatsView(
                         ebookMinutes = it.ebookMinutes,
                         audioSeconds = it.audioSeconds,
                         ebookSeconds = it.ebookSeconds,
+                        podcastMinutes = it.podcastMinutes,
+                        podcastSeconds = it.podcastSeconds,
                         wordsRead = it.wordsRead,
                     )
                 }
@@ -251,6 +260,25 @@ internal fun StatsView(
                         fontSize = 13.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
                     )
+                    if (type != null) {
+                        Row(
+                            modifier = Modifier.padding(top = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        ) {
+                            Icon(
+                                modifier = Modifier.size(16.dp),
+                                painter = painterResource(type.iconRes()),
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                            )
+                            Text(
+                                text = type.name,
+                                fontSize = 13.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                            )
+                        }
+                    }
                 }
                 StatRow(
                     label = "Audio listened",
@@ -261,6 +289,11 @@ internal fun StatsView(
                     label = "Ebook read",
                     primary = formatDuration(selectedStat.ebookSeconds),
                     secondary = "${selectedStat.ebookSeconds} s",
+                )
+                StatRow(
+                    label = "Podcast listened",
+                    primary = formatDuration(selectedStat.podcastSeconds),
+                    secondary = "${selectedStat.podcastSeconds} s",
                 )
                 StatRow(
                     label = "Total time",

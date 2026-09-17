@@ -3,6 +3,8 @@ package io.wedobooks.sdk.library.wedobookssdksampleapp
 import android.app.Application
 import android.util.Log
 import io.wedobooks.sdk.WeDoBooksSdk
+import io.wedobooks.sdk.library.wedobookssdksampleapp.environment.AppEnvironment
+import io.wedobooks.sdk.library.wedobookssdksampleapp.storage.SampleStores
 import io.wedobooks.sdk.models.WdbConfiguration
 import io.wedobooks.sdk.models.WdbInternalProgressConfig
 import io.wedobooks.sdk.models.WdbThemeConfiguration
@@ -20,6 +22,11 @@ class SampleApplication : Application() {
     override fun onCreate() {
         super.onCreate()
 
+        // MUST run before WeDoBooksSdk.setup(): the SDK is one-shot per
+        // process, so the environment is fixed for this process's lifetime.
+        AppEnvironment.init(applicationContext)
+        SampleStores.init(applicationContext)
+
         WeDoBooksSdk.setup(
             context = applicationContext,
             config = WdbConfiguration(
@@ -27,8 +34,8 @@ class SampleApplication : Application() {
                 firebaseApiKey = Constants.SDK_API_KEY,
                 firebaseProjectId = Constants.SDK_PROJECT_ID,
                 firebaseAppId = Constants.SDK_APP_ID,
-                readerApiKey = BuildConfig.READER_API_KEY,
-                readerApiSecret = BuildConfig.READER_API_SECRET,
+                readerApiKey = Constants.READER_API_KEY,
+                readerApiSecret = Constants.READER_API_SECRET,
                 internalProgressConfig = WdbInternalProgressConfig(
                     player = false,
                     reader = false,
