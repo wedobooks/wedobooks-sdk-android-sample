@@ -235,7 +235,6 @@ private fun CheckoutsTab(
                     checkout = checkout,
                     downloadStatus = downloadStatus,
                     isTogglePending = isTogglePending,
-                    canRemove = vm.rememberedIsbns.contains(checkout.materialId),
                     onOpen = {
                         setCheckout(checkout)
                         goToReader()
@@ -257,7 +256,6 @@ private fun CheckoutsTab(
                     onPlaySample = { goToSampleAudiobook(checkout.materialId) },
                     onHeadlessSample = { goToHeadlessSampleAudio(checkout.materialId) },
                     onWdbSample = { goToWdbSampleAudio(checkout.materialId) },
-                    onRemove = { vm.forgetBook(checkout.materialId) },
                 )
             }
         }
@@ -278,8 +276,6 @@ private fun BookCard(
     checkout: Checkout,
     downloadStatus: WdbDownloadStatus?,
     isTogglePending: Boolean,
-    /** Only books the store remembers can be dropped from the saved list. */
-    canRemove: Boolean,
     onOpen: () -> Unit,
     onHeadlessAudio: () -> Unit,
     onWdbAudioPlayer: () -> Unit,
@@ -288,7 +284,6 @@ private fun BookCard(
     onPlaySample: () -> Unit,
     onHeadlessSample: () -> Unit,
     onWdbSample: () -> Unit,
-    onRemove: () -> Unit,
 ) {
     val downloadUiState = downloadStatus.toDownloadButtonState(
         hasSelectedCheckout = true,
@@ -355,15 +350,6 @@ private fun BookCard(
             CustomButton(title = "Play sample (SDK player)", onClick = onPlaySample)
             CustomButton(title = "Play sample (headless \u00B7 custom UI)", onClick = onHeadlessSample)
             CustomButton(title = "Play sample (Media3 builder \u00B7 custom UI)", onClick = onWdbSample)
-
-            if (canRemove) {
-                CustomButton(
-                    title = "Remove from saved ISBNs",
-                    color = MaterialTheme.colorScheme.secondary,
-                    textColor = MaterialTheme.colorScheme.onSecondary,
-                    onClick = onRemove,
-                )
-            }
         }
     }
 }

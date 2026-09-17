@@ -37,10 +37,6 @@ class MainScreenViewModel : ViewModel() {
     var books by mutableStateOf(emptyList<TestBook>())
         private set
 
-    /** ISBNs backed by the store, i.e. the ones that can be removed again. */
-    var rememberedIsbns by mutableStateOf(emptySet<String>())
-        private set
-
     private val envId get() = AppEnvironment.current.id
 
     init {
@@ -127,7 +123,6 @@ class MainScreenViewModel : ViewModel() {
     private fun refreshBooks() {
         val remembered = SampleStores.books.all(envId)
         books = mergeBooks(TestBooks.seed, remembered)
-        rememberedIsbns = remembered.map { it.isbn }.toSet()
     }
 
     /**
