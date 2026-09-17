@@ -2,11 +2,6 @@ package io.wedobooks.sdk.library.wedobookssdksampleapp.environment
 
 import io.wedobooks.sdk.models.SdkMode
 
-// The reader licence is normally the same across environments, so it
-// is declared once and referenced below. Override per entry if yours differ.
-private const val READER_API_KEY = "<reader-api-key>"
-private const val READER_API_SECRET = "<reader-api-secret>"
-
 /**
  * Environments this build can run against. Fill in your own values.
  *
@@ -28,8 +23,8 @@ object Environments {
             firebaseAppId = "<firebase-app-id>",
             firebaseProjectId = "<firebase-project-id>",
             customTokenUrl = "<custom-token-url>",
-            readerApiKey = READER_API_KEY,
-            readerApiSecret = READER_API_SECRET,
+            readerApiKey = "<reader-api-key>",
+            readerApiSecret = "<reader-api-secret>",
         ),
         // Add more entries here to get an in-app environment picker.
         // Give each one its own `id`: ids namespace the remembered UIDs
