@@ -15,6 +15,7 @@ object Constants {
     val READER_API_KEY: String get() = env.readerApiKey
     val READER_API_SECRET: String get() = env.readerApiSecret
     val SDK_MODE: SdkMode get() = env.sdkMode
+    val INTERNAL_PROGRESS: Boolean get() = env.internalProgress
 
     /** Pre-fills the reserve field on the Reservations tab. */
     val RESERVATION_BOOK: String? get() = null

@@ -12,4 +12,5 @@ data class SampleEnvironment(
     val customTokenUrl: String,
     val readerApiKey: String,
     val readerApiSecret: String,
+    val internalProgress: Boolean = true,
 )
