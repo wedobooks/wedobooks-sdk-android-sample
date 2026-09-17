@@ -108,13 +108,13 @@ class MainActivity : ComponentActivity() {
                    Also please only use it like this if you intend on disabling screen rotation else it will use goTo again on rotation.
                    Propper usage would be through a ViewModel that only calls it once
                 */
-                if (isAuthenticated && isBookLoaded) {
-                    runCatching {
-                        WeDoBooksSdk.reader.percentageToCfi(0.5, 9).let {
-                            WeDoBooksSdk.reader.goTo(it)
-                        }
-                    }
-                }
+//                if (isAuthenticated && isBookLoaded) {
+//                    runCatching {
+//                        WeDoBooksSdk.reader.percentageToCfi(0.5, 9).let {
+//                            WeDoBooksSdk.reader.goTo(it)
+//                        }
+//                    }
+//                }
             }
 
             val activityContext = LocalContext.current
@@ -225,7 +225,7 @@ class MainActivity : ComponentActivity() {
                                 isFinishButtonEnabled = true,
                                 isMinimizeButtonEnabled = true,
                                 onAudioMinimizeClick = null, // different behavior for minimize else defaults to onCloseClick without stopping audio
-                                initialAudioBookProgressMs = 32000, // only used if internalProgressConfig.player = false
+                                initialAudioBookProgressMs = null, // only used if internalProgressConfig.player = false
                                 initialReaderCfi = null, // only used if internalProgressConfig.reader = false
                                 viewModelStoreOwner = null, // if you want to save state outside this composable
                                 isDarkMode = isDarkMode,
