@@ -12,5 +12,7 @@ data class SampleEnvironment(
     val customTokenUrl: String,
     val readerApiKey: String,
     val readerApiSecret: String,
-    val internalProgress: Boolean = true,
+    // Internal SDK progress tracking, per material: player = audiobook, reader = ebook.
+    val internalProgressPlayer: Boolean = true,
+    val internalProgressReader: Boolean = true,
 )

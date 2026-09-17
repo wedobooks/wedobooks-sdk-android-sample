@@ -37,8 +37,8 @@ class SampleApplication : Application() {
                 readerApiKey = Constants.READER_API_KEY,
                 readerApiSecret = Constants.READER_API_SECRET,
                 internalProgressConfig = WdbInternalProgressConfig(
-                    player = Constants.INTERNAL_PROGRESS,
-                    reader = Constants.INTERNAL_PROGRESS,
+                    player = Constants.INTERNAL_PROGRESS_PLAYER,
+                    reader = Constants.INTERNAL_PROGRESS_READER,
                 ),
                 sdkMode = Constants.SDK_MODE,
             ),

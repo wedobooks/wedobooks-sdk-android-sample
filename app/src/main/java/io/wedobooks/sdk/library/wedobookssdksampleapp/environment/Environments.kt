@@ -25,7 +25,8 @@ object Environments {
             customTokenUrl = "<custom-token-url>",
             readerApiKey = "<reader-api-key>",
             readerApiSecret = "<reader-api-secret>",
-            internalProgress = true,
+            internalProgressPlayer = true,
+            internalProgressReader = true,
         ),
         // Add more entries here to get an in-app environment picker.
         // Give each one its own `id`: ids namespace the remembered UIDs
