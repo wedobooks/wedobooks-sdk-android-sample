@@ -10,12 +10,17 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ElevatedCard
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -55,9 +60,7 @@ fun ReservationsScreen(
     val offers by remember { WeDoBooksSdk.reservationOperations.reservationOffersFlow }
         .collectAsState(initial = emptyList())
 
-    var isbn by remember { mutableStateOf(Constants.RESERVATION_BOOK.orEmpty()) }
-    var isReserving by remember { mutableStateOf(false) }
-    var reserveResult by remember { mutableStateOf<String?>(null) }
+    var showReserveSheet by remember { mutableStateOf(false) }
     var busyReservationId by remember { mutableStateOf<String?>(null) }
     var acceptingOfferId by remember { mutableStateOf<String?>(null) }
     var cancellingOfferId by remember { mutableStateOf<String?>(null) }
@@ -68,35 +71,9 @@ fun ReservationsScreen(
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         item(key = "reserve") {
-            ReserveCard(
-                savedBooks = savedBooks,
-                reservingIsbns = reservingIsbns,
-                onReserveSaved = { saved ->
-                    coroutineScope.launch {
-                        reserveResult = onReserveSaved(saved)
-                    }
-                },
-                onForgetIsbn = onForgetIsbn,
-                isbn = isbn,
-                onIsbnChange = { isbn = it },
-                isReserving = isReserving,
-                result = reserveResult,
-                onReserve = {
-                    val materialId = isbn.trim()
-                    coroutineScope.launch {
-                        isReserving = true
-                        reserveResult = runCatching {
-                            val response =
-                                WeDoBooksSdk.reservationOperations.reserveBook(materialId)
-                            buildString {
-                                append(response.canLoan.name)
-                                response.message?.takeIf { it.isNotBlank() }
-                                    ?.let { append(" · "); append(it) }
-                            }
-                        }.getOrElse { "Error: ${it.cause?.message ?: it.message}" }
-                        isReserving = false
-                    }
-                },
+            CustomButton(
+                title = "Reserve a book by ISBN",
+                onClick = { showReserveSheet = true },
             )
         }
 
@@ -172,53 +149,92 @@ fun ReservationsScreen(
             }
         }
     }
+
+    if (showReserveSheet) {
+        ReserveBookSheet(
+            savedBooks = savedBooks,
+            reservingIsbns = reservingIsbns,
+            onReserveSaved = onReserveSaved,
+            onForgetIsbn = onForgetIsbn,
+            onDismiss = { showReserveSheet = false },
+        )
+    }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun ReserveCard(
+private fun ReserveBookSheet(
     savedBooks: List<TestBook>,
     reservingIsbns: Set<String>,
-    onReserveSaved: (String) -> Unit,
+    onReserveSaved: suspend (String) -> String,
     onForgetIsbn: (String) -> Unit,
-    isbn: String,
-    onIsbnChange: (String) -> Unit,
-    isReserving: Boolean,
-    result: String?,
-    onReserve: () -> Unit,
+    onDismiss: () -> Unit,
 ) {
-    Card {
-        Text(
-            text = "Reserve a book",
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.SemiBold,
-        )
-        OutlinedTextField(
-            value = isbn,
-            onValueChange = onIsbnChange,
-            label = { Text("ISBN") },
-            singleLine = true,
-            modifier = Modifier.fillMaxWidth(),
-        )
-        SavedIsbnPicker(
-            books = savedBooks,
-            actionLabel = "RESERVE",
-            busyIsbns = reservingIsbns,
-            onAction = onReserveSaved,
-            onForget = onForgetIsbn,
-        )
-        CustomButton(
-            title = "Reserve",
-            isLoading = isReserving,
-            enabled = isbn.isNotBlank(),
-            onClick = onReserve,
-        )
-        result?.let {
+    val sheetState = rememberModalBottomSheetState()
+    val coroutineScope = rememberCoroutineScope()
+    var isbn by remember { mutableStateOf(Constants.RESERVATION_BOOK.orEmpty()) }
+    var isReserving by remember { mutableStateOf(false) }
+    var result by remember { mutableStateOf<String?>(null) }
+
+    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 24.dp)
+                .padding(bottom = 32.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
             Text(
-                text = it,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                style = MaterialTheme.typography.bodySmall,
+                text = "Reserve a book",
+                color = MaterialTheme.colorScheme.onSurface,
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.SemiBold,
             )
+            OutlinedTextField(
+                value = isbn,
+                onValueChange = { isbn = it },
+                label = { Text("ISBN") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+            )
+            CustomButton(
+                title = "Reserve",
+                isLoading = isReserving,
+                enabled = isbn.isNotBlank(),
+                onClick = {
+                    val materialId = isbn.trim()
+                    coroutineScope.launch {
+                        isReserving = true
+                        result = runCatching {
+                            val response =
+                                WeDoBooksSdk.reservationOperations.reserveBook(materialId)
+                            buildString {
+                                append(response.canLoan.name)
+                                response.message?.takeIf { it.isNotBlank() }
+                                    ?.let { append(" · "); append(it) }
+                            }
+                        }.getOrElse { "Error: ${it.cause?.message ?: it.message}" }
+                        isReserving = false
+                    }
+                },
+            )
+            SavedIsbnPicker(
+                books = savedBooks,
+                actionLabel = "RESERVE",
+                busyIsbns = reservingIsbns,
+                onAction = { saved ->
+                    coroutineScope.launch { result = onReserveSaved(saved) }
+                },
+                onForget = onForgetIsbn,
+            )
+            result?.let {
+                Text(
+                    text = it,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    style = MaterialTheme.typography.bodySmall,
+                )
+            }
         }
     }
 }

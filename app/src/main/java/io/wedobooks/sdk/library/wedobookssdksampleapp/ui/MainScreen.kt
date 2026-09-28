@@ -51,6 +51,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import io.wedobooks.sdk.WeDoBooksSdk
 import io.wedobooks.sdk.library.wedobookssdksampleapp.Constants
+import io.wedobooks.sdk.library.wedobookssdksampleapp.environment.AppEnvironment
 import io.wedobooks.sdk.library.wedobookssdksampleapp.ui.components.SavedIsbnPicker
 import io.wedobooks.sdk.library.wedobookssdksampleapp.viewmodels.MainScreenViewModel
 import io.wedobooks.sdk.models.Checkout
@@ -77,6 +78,7 @@ fun MainScreen(
     toggleDarkMode: () -> Unit,
 ) {
     val vm: MainScreenViewModel = viewModel()
+    val currentUserId by vm.authService.currentUser.collectAsState()
     val tabs = remember {
         listOfNotNull(
             "Checkouts",
@@ -106,6 +108,16 @@ fun MainScreen(
                 color = MaterialTheme.colorScheme.onBackground,
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.SemiBold,
+            )
+            Text(
+                text = AppEnvironment.current.label,
+                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
+                style = MaterialTheme.typography.labelMedium,
+            )
+            Text(
+                text = currentUserId ?: "Not signed in",
+                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f),
+                style = MaterialTheme.typography.labelSmall,
             )
         }
 
@@ -394,27 +406,6 @@ private fun LoanBookSheet(
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
             )
-            SavedIsbnPicker(
-                books = vm.books,
-                actionLabel = "LOAN",
-                busyIsbns = inFlight,
-                onAction = { saved ->
-                    coroutineScope.launch {
-                        val checkout = vm.getCheckout(saved)
-                        Toast.makeText(
-                            context,
-                            if (checkout != null) {
-                                "Loaned ${checkout.title.ifBlank { saved }}"
-                            } else {
-                                "Could not loan $saved"
-                            },
-                            Toast.LENGTH_SHORT,
-                        ).show()
-                        if (checkout != null) onDismiss()
-                    }
-                },
-                onForget = { vm.forgetBook(it) },
-            )
             CustomButton(
                 title = "Loan",
                 isLoading = inFlight.contains(isbn.trim()),
@@ -440,6 +431,27 @@ private fun LoanBookSheet(
                         }
                     }
                 },
+            )
+            SavedIsbnPicker(
+                books = vm.books,
+                actionLabel = "LOAN",
+                busyIsbns = inFlight,
+                onAction = { saved ->
+                    coroutineScope.launch {
+                        val checkout = vm.getCheckout(saved)
+                        Toast.makeText(
+                            context,
+                            if (checkout != null) {
+                                "Loaned ${checkout.title.ifBlank { saved }}"
+                            } else {
+                                "Could not loan $saved"
+                            },
+                            Toast.LENGTH_SHORT,
+                        ).show()
+                        if (checkout != null) onDismiss()
+                    }
+                },
+                onForget = { vm.forgetBook(it) },
             )
         }
     }
