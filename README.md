@@ -37,6 +37,11 @@ WDB_PASSWORD=<password>
 
 Once you've added these values, sync the Gradle project.
 
+Upgrading from an older checkout? Firebase keys, `CUSTOM_TOKEN_URL`,
+`DEMO_USER_ID` and the reader credentials used to live in `local.properties`
+too — they are no longer read. Move them into `Environments.kt` (below) and
+delete them here.
+
 ---
 
 ### Environments
@@ -45,8 +50,10 @@ Once you've added these values, sync the Gradle project.
 
 Runtime configuration lives in
 `app/src/main/java/io/wedobooks/sdk/library/wedobookssdksampleapp/environment/Environments.kt`.
-Fill in the placeholder values with your Firebase config, custom-token URL and
-reader licence.
+Fill in each environment's placeholder values — Firebase config, custom-token
+URL, reader licence and SDK mode (`SdkMode.Streaming` or `SdkMode.Library`).
+Internal-progress tracking (`internalProgressPlayer` / `internalProgressReader`)
+is on by default.
 
 With one entry the app behaves as it always has. Add a second and an
 environment picker appears on the login screen; switching signs you out and
@@ -56,13 +63,6 @@ Demo book ISBNs are optional and go in
 `app/src/main/java/io/wedobooks/sdk/library/wedobookssdksampleapp/books/TestBooks.kt`.
 You do not need them: any ISBN loaned from inside the app is remembered
 automatically, by title.
-
-Both files are tracked in git, so keep your own values out of commits:
-
-```bash
-git update-index --skip-worktree app/src/main/java/io/wedobooks/sdk/library/wedobookssdksampleapp/environment/Environments.kt
-git update-index --skip-worktree app/src/main/java/io/wedobooks/sdk/library/wedobookssdksampleapp/books/TestBooks.kt
-```
 
 ---
 
