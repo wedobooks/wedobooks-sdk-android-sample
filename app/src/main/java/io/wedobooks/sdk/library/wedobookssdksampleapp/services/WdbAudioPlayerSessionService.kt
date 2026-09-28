@@ -86,20 +86,20 @@ class WdbAudioPlayerSessionService : MediaLibraryService() {
         // audio/UI desync. The SDK's own AudioServiceManager stops the current content first too.
         currentPlayer.stop()
         val cover = coverUrl?.let { CustomCover.Url(it) }
-        val loaded = initialProgressMs?.let {
+        if (initialProgressMs != null) {
             currentPlayer.loadBook(
                 checkout = checkout,
                 cover = cover,
-                initialProgressMs = it
+                initialProgressMs = initialProgressMs
             )
-        } ?: currentPlayer.loadBook(
-            checkout = checkout,
-            cover = cover,
-        )
-        if (loaded) {
-            currentPlayer.prepare()
+        } else {
+            currentPlayer.loadBook(
+                checkout = checkout,
+                cover = cover,
+            )
         }
-        loaded
+        currentPlayer.prepare()
+        true
     }
 
     private suspend fun loadSampleInternal(
@@ -116,6 +116,7 @@ class WdbAudioPlayerSessionService : MediaLibraryService() {
             isbn = isbn,
             cover = coverUrl?.let { CustomCover.Url(it) },
         )
+        true
     }
 
     private val callback = object : MediaLibrarySession.Callback {

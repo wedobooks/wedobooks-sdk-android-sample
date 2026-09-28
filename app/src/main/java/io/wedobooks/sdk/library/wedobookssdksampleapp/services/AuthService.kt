@@ -2,7 +2,7 @@ package io.wedobooks.sdk.library.wedobookssdksampleapp.services
 
 import android.util.Log
 import io.wedobooks.sdk.WeDoBooksSdk
-import io.wedobooks.sdk.library.wedobookssdksampleapp.BuildConfig
+import io.wedobooks.sdk.library.wedobookssdksampleapp.Constants
 import io.wedobooks.sdk.library.wedobookssdksampleapp.utils.await
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -33,7 +33,7 @@ class AuthService private constructor() {
             val body = jsonBody.toString().toRequestBody(mediaType)
 
             val request = Request.Builder()
-                .url(BuildConfig.CUSTOM_TOKEN_URL)
+                .url(Constants.CUSTOM_TOKEN_URL)
                 .post(body)
                 .addHeader("Content-Length", "${body.contentLength()}")
                 .addHeader("Connection", "close")

@@ -60,6 +60,7 @@ fun HeadlessAudioSampleScreen(
         isPlayerReady = false
         didLoad = try {
             WeDoBooksSdk.headlessAudioPlayer.loadSample(isbn = isbn, cover = null)
+            true
         } catch (e: Exception) {
             statusMessage = "Failed to load sample: ${e.message ?: "unknown error"}"
             false

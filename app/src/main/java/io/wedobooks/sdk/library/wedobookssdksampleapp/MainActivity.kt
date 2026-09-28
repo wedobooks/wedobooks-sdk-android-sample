@@ -41,6 +41,8 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
+import androidx.navigation.NavType
+import androidx.navigation.navArgument
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
@@ -48,6 +50,7 @@ import androidx.navigation.compose.rememberNavController
 import io.wedobooks.sdk.R
 import io.wedobooks.sdk.WeDoBooksSdk
 import io.wedobooks.sdk.models.Checkout
+import io.wedobooks.sdk.models.WdbPlaybackStopReason
 import io.wedobooks.sdk.models.enums.MaterialType
 import io.wedobooks.sdk.library.wedobookssdksampleapp.ui.DownloadedBooksScreen
 import io.wedobooks.sdk.library.wedobookssdksampleapp.ui.DevicesScreen
@@ -105,18 +108,39 @@ class MainActivity : ComponentActivity() {
                    Also please only use it like this if you intend on disabling screen rotation else it will use goTo again on rotation.
                    Propper usage would be through a ViewModel that only calls it once
                 */
-                if (isAuthenticated && isBookLoaded) {
-                    runCatching {
-                        WeDoBooksSdk.reader.percentageToCfi(0.5, 9).let {
-                            WeDoBooksSdk.reader.goTo(it)
-                        }
-                    }
-                }
+//                if (isAuthenticated && isBookLoaded) {
+//                    runCatching {
+//                        WeDoBooksSdk.reader.percentageToCfi(0.5, 9).let {
+//                            WeDoBooksSdk.reader.goTo(it)
+//                        }
+//                    }
+//                }
             }
+
+            val activityContext = LocalContext.current
 
             LaunchedEffect(Unit) {
                 WeDoBooksSdk.events.sessionInterruptionEvents().collect { event ->
                     Log.d(TAG, "sessionInterrupted= $event")
+                }
+            }
+
+            // A playing audiobook can die in the background when another device
+            // takes over the session or the loan expires. The SDK stops playback
+            // itself; the app just surfaces why via the player's stop reason.
+            LaunchedEffect(Unit) {
+                WeDoBooksSdk.headlessAudioPlayer.stopReason.collect { reason ->
+                    val message = when (reason) {
+                        is WdbPlaybackStopReason.AccessExpired ->
+                            "Playback stopped: your loan expired"
+                        is WdbPlaybackStopReason.SessionLost ->
+                            "Playback stopped: another device took over"
+                        else -> null
+                    }
+                    if (message != null) {
+                        Log.d(TAG, "playbackStopped= $reason")
+                        Toast.makeText(activityContext, message, Toast.LENGTH_LONG).show()
+                    }
                 }
             }
 
@@ -159,17 +183,17 @@ class MainActivity : ComponentActivity() {
                                 goToDevices = {
                                     mainNavController.navigate(Routes.devices)
                                 },
-                                goToSampleEbook = {
-                                    mainNavController.navigate(Routes.sampleEbook)
+                                goToSampleEbook = { isbn ->
+                                    mainNavController.navigate(Routes.sampleEbookRoute(isbn))
                                 },
-                                goToSampleAudiobook = {
-                                    mainNavController.navigate(Routes.sampleAudiobook)
+                                goToSampleAudiobook = { isbn ->
+                                    mainNavController.navigate(Routes.sampleAudiobookRoute(isbn))
                                 },
-                                goToHeadlessSampleAudio = {
-                                    mainNavController.navigate(Routes.headlessSampleAudio)
+                                goToHeadlessSampleAudio = { isbn ->
+                                    mainNavController.navigate(Routes.headlessSampleAudioRoute(isbn))
                                 },
-                                goToWdbSampleAudio = {
-                                    mainNavController.navigate(Routes.wdbSampleAudio)
+                                goToWdbSampleAudio = { isbn ->
+                                    mainNavController.navigate(Routes.wdbSampleAudioRoute(isbn))
                                 },
                                 toggleDarkMode = {
                                     isDarkMode = !isDarkMode
@@ -201,7 +225,7 @@ class MainActivity : ComponentActivity() {
                                 isFinishButtonEnabled = true,
                                 isMinimizeButtonEnabled = true,
                                 onAudioMinimizeClick = null, // different behavior for minimize else defaults to onCloseClick without stopping audio
-                                initialAudioBookProgressMs = 32000, // only used if internalProgressConfig.player = false
+                                initialAudioBookProgressMs = null, // only used if internalProgressConfig.player = false
                                 initialReaderCfi = null, // only used if internalProgressConfig.reader = false
                                 viewModelStoreOwner = null, // if you want to save state outside this composable
                                 isDarkMode = isDarkMode,
@@ -250,9 +274,15 @@ class MainActivity : ComponentActivity() {
                                 }
                             )
                         }
-                        composable(route = Routes.sampleEbook) {
+                        composable(
+                            route = Routes.sampleEbook,
+                            arguments = listOf(navArgument(Routes.ISBN_ARG) {
+                                type = NavType.StringType
+                            }),
+                        ) { backStackEntry ->
                             WeDoBooksSdk.bookOperations.SampleBookScreen(
-                                isbn = Constants.E_BOOK,
+                                isbn = backStackEntry.arguments
+                                    ?.getString(Routes.ISBN_ARG).orEmpty(),
                                 materialType = MaterialType.Ebook,
                                 cover = null,
                                 onCloseClick = {
@@ -262,9 +292,15 @@ class MainActivity : ComponentActivity() {
                                 metadata = null,
                             )
                         }
-                        composable(route = Routes.sampleAudiobook) {
+                        composable(
+                            route = Routes.sampleAudiobook,
+                            arguments = listOf(navArgument(Routes.ISBN_ARG) {
+                                type = NavType.StringType
+                            }),
+                        ) { backStackEntry ->
                             WeDoBooksSdk.bookOperations.SampleBookScreen(
-                                isbn = Constants.AUDIO_BOOK,
+                                isbn = backStackEntry.arguments
+                                    ?.getString(Routes.ISBN_ARG).orEmpty(),
                                 materialType = MaterialType.Audiobook,
                                 cover = null,
                                 onCloseClick = {
@@ -274,15 +310,27 @@ class MainActivity : ComponentActivity() {
                                 metadata = null,
                             )
                         }
-                        composable(route = Routes.headlessSampleAudio) {
+                        composable(
+                            route = Routes.headlessSampleAudio,
+                            arguments = listOf(navArgument(Routes.ISBN_ARG) {
+                                type = NavType.StringType
+                            }),
+                        ) { backStackEntry ->
                             HeadlessAudioSampleScreen(
-                                isbn = Constants.AUDIO_BOOK,
+                                isbn = backStackEntry.arguments
+                                    ?.getString(Routes.ISBN_ARG).orEmpty(),
                                 goBack = { mainNavController.popBackStack() },
                             )
                         }
-                        composable(route = Routes.wdbSampleAudio) {
+                        composable(
+                            route = Routes.wdbSampleAudio,
+                            arguments = listOf(navArgument(Routes.ISBN_ARG) {
+                                type = NavType.StringType
+                            }),
+                        ) { backStackEntry ->
                             WdbAudioPlayerSampleScreen(
-                                isbn = Constants.AUDIO_BOOK,
+                                isbn = backStackEntry.arguments
+                                    ?.getString(Routes.ISBN_ARG).orEmpty(),
                                 goBack = { mainNavController.popBackStack() },
                             )
                         }
