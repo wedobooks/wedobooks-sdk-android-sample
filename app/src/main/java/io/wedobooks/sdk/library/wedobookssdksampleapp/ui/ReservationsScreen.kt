@@ -252,6 +252,7 @@ private fun ReservationCard(
             style = MaterialTheme.typography.titleSmall,
             fontWeight = FontWeight.SemiBold,
         )
+        reservation.queuePosition?.let { MetaRow("Queue position", it.toString()) }
         MetaRow("Type", reservation.type.name)
         MetaRow("Material", reservation.materialType.name)
         MetaRow("Loan date", dateFormatter.format(reservation.loanDate))
