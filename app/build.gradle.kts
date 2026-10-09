@@ -12,7 +12,7 @@ android {
         applicationId = "io.wedobooks.sdk.library.wedobookssdksampleapp"
         minSdk = 26
         targetSdk = 35
-        versionCode = 7
+        versionCode = 10
         versionName = "1.10.2"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
