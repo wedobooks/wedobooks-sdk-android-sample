@@ -34,6 +34,10 @@ class BookScreenSettingsStore(private val store: KeyValueStore) {
                 READER_REMEMBER_BRIGHTNESS,
                 defaults.rememberReaderBrightness,
             ),
+            useLocalHighlightStorage = json.optBoolean(
+                LOCAL_HIGHLIGHT_STORAGE,
+                defaults.useLocalHighlightStorage,
+            ),
         )
     }
 
@@ -46,6 +50,7 @@ class BookScreenSettingsStore(private val store: KeyValueStore) {
             .put(READER_FINISH, settings.showReaderFinishButton)
             .put(READER_BRIGHTNESS_MODE, settings.readerBrightnessMode.name)
             .put(READER_REMEMBER_BRIGHTNESS, settings.rememberReaderBrightness)
+            .put(LOCAL_HIGHLIGHT_STORAGE, settings.useLocalHighlightStorage)
         store.putString(KEY, json.toString())
     }
 
@@ -58,5 +63,6 @@ class BookScreenSettingsStore(private val store: KeyValueStore) {
         const val READER_FINISH = "reader_finish"
         const val READER_BRIGHTNESS_MODE = "reader_brightness_mode"
         const val READER_REMEMBER_BRIGHTNESS = "reader_remember_brightness"
+        const val LOCAL_HIGHLIGHT_STORAGE = "local_highlight_storage"
     }
 }

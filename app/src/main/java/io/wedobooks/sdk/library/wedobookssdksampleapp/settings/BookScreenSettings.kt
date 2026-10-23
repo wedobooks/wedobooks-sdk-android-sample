@@ -1,6 +1,7 @@
 package io.wedobooks.sdk.library.wedobookssdksampleapp.settings
 
 import io.wedobooks.sdk.WeDoBooksSdk
+import io.wedobooks.sdk.library.wedobookssdksampleapp.storage.SampleStores
 import io.wedobooks.sdk.models.enums.WdbReaderBrightnessMode
 
 data class BookScreenSettings(
@@ -11,6 +12,8 @@ data class BookScreenSettings(
     val showReaderFinishButton: Boolean = true,
     val readerBrightnessMode: WdbReaderBrightnessMode = WdbReaderBrightnessMode.Window,
     val rememberReaderBrightness: Boolean = false,
+    // Off: the reader uses the SDK's own highlight storage instead of the local copy.
+    val useLocalHighlightStorage: Boolean = true,
 )
 
 /** The SDK does not persist these, so the app applies its saved copy on every launch. */
@@ -29,6 +32,7 @@ fun BookScreenSettings.applyToSdk() {
             showFinishBookButton = showReaderFinishButton,
             brightnessMode = readerBrightnessMode,
             rememberBrightness = rememberReaderBrightness,
+            highlightCallback = SampleStores.localHighlights.takeIf { useLocalHighlightStorage },
         )
     )
 }

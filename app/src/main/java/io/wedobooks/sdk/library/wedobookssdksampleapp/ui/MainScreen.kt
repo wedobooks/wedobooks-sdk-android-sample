@@ -658,6 +658,15 @@ private fun SettingsTab(
                     },
                 )
             }
+            item {
+                SettingSwitchRow(
+                    title = "Local highlight storage",
+                    checked = bookScreenSettings.useLocalHighlightStorage,
+                    onCheckedChange = {
+                        vm.updateBookScreenSettings(bookScreenSettings.copy(useLocalHighlightStorage = it))
+                    },
+                )
+            }
         }
 
         // Appearance — visual settings.

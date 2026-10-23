@@ -13,7 +13,6 @@ import io.wedobooks.sdk.models.WdbInternalProgressConfig
 import io.wedobooks.sdk.models.WdbPlayerConfiguration
 import io.wedobooks.sdk.models.WdbReaderConfiguration
 import io.wedobooks.sdk.models.WdbThemeConfiguration
-import io.wedobooks.sdk.library.wedobookssdksampleapp.services.LocalHighlightCallback
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -60,14 +59,12 @@ class SampleApplication : Application() {
                 onTappedFinishBookButton = { checkout -> reportBookScreenTap("Player finish tapped", checkout) },
             )
         )
-        // The reader shows highlights from a copy kept on the device; the SDK still keeps every
-        // change in its own storage.
         WeDoBooksSdk.configuration.setReaderConfiguration(
             WdbReaderConfiguration(
                 onTappedFinishBookButton = { checkout -> reportBookScreenTap("Reader finish tapped", checkout) },
-                highlightCallback = LocalHighlightCallback(applicationContext),
             )
         )
+        // Also installs the local highlight copy when that setting is on.
         SampleStores.bookScreenSettings.load().applyToSdk()
 
         // Observe SDK background errors (Firestore permission failures, etc.).
