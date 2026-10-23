@@ -17,7 +17,6 @@ import com.google.common.util.concurrent.MoreExecutors
 import io.wedobooks.sdk.WeDoBooksSdk
 import io.wedobooks.sdk.models.Checkout
 import io.wedobooks.sdk.models.WdbDownloadStatus
-import io.wedobooks.sdk.models.enums.MaterialType
 import io.wedobooks.sdk.models.enums.WdbDownloadState
 import io.wedobooks.sdk.library.wedobookssdksampleapp.services.WdbAudioPlayerSessionService
 import io.wedobooks.sdk.library.wedobookssdksampleapp.utils.toBundle
@@ -51,14 +50,14 @@ data class WdbAudioPlayerState(
     val downloadStatus: WdbDownloadStatus? = null,
 ) {
     val canDownload: Boolean
-        get() = checkout?.type == MaterialType.Audiobook &&
+        get() = checkout?.type?.isAudio == true &&
             (downloadStatus == null ||
                 downloadStatus.state == WdbDownloadState.NotStarted ||
                 downloadStatus.state == WdbDownloadState.Cancelled ||
                 downloadStatus.state == WdbDownloadState.Error)
 
     val canDelete: Boolean
-        get() = checkout?.type == MaterialType.Audiobook &&
+        get() = checkout?.type?.isAudio == true &&
             downloadStatus != null &&
             downloadStatus.state != WdbDownloadState.NotStarted
 }
@@ -118,7 +117,7 @@ class WdbAudioPlayerScreenViewModel(application: Application) : AndroidViewModel
     fun loadPlayer() {
         viewModelScope.launch {
             val selectedCheckout = checkout.value
-            if (selectedCheckout?.type != MaterialType.Audiobook) {
+            if (selectedCheckout?.type?.isAudio != true) {
                 _state.value = _state.value.copy(
                     statusMessage = "Select an audiobook first",
                     didLoad = false,
@@ -133,20 +132,24 @@ class WdbAudioPlayerScreenViewModel(application: Application) : AndroidViewModel
                 statusMessage = "Loading WdbAudioPlayer...",
             )
             try {
-                val loaded = loadBookWithCommand(
+                loadBookWithCommand(
                     checkout = selectedCheckout,
                     coverUrl = coverUrl,
                     initialProgressMs = 32000
+                ).fold(
+                    onSuccess = {
+                        _state.value = _state.value.copy(
+                            didLoad = true,
+                            statusMessage = "Controller connected, waiting for STATE_READY...",
+                        )
+                        startPositionPolling()
+                    },
+                    onFailure = { failure ->
+                        _state.value = _state.value.copy(
+                            statusMessage = failure.message ?: "Failed to load player",
+                        )
+                    },
                 )
-                if (loaded) {
-                    _state.value = _state.value.copy(
-                        didLoad = true,
-                        statusMessage = "Controller connected, waiting for STATE_READY...",
-                    )
-                    startPositionPolling()
-                } else {
-                    _state.value = _state.value.copy(statusMessage = "Failed to load player")
-                }
             } catch (e: Exception) {
                 _state.value = _state.value.copy(
                     statusMessage = "Failed to load player: ${e.message ?: "unknown error"}"
@@ -327,7 +330,7 @@ class WdbAudioPlayerScreenViewModel(application: Application) : AndroidViewModel
         checkout: Checkout,
         coverUrl: String?,
         initialProgressMs: Long?,
-    ): Boolean {
+    ): Result<Unit> {
         val mediaController = getOrCreateController()
         val args = checkout.toBundle().apply {
             putString(WdbAudioPlayerSessionService.ARG_COVER_URL, coverUrl)
@@ -337,8 +340,12 @@ class WdbAudioPlayerScreenViewModel(application: Application) : AndroidViewModel
         }
         val command = SessionCommand(WdbAudioPlayerSessionService.LOAD_BOOK_COMMAND, Bundle.EMPTY)
         val result = mediaController.sendCustomCommand(command, args).await()
-        if (result.resultCode != SessionResult.RESULT_SUCCESS) return false
-        return result.extras.getBoolean(WdbAudioPlayerSessionService.RESULT_DID_LOAD, false)
+        val didLoad = result.resultCode == SessionResult.RESULT_SUCCESS &&
+            result.extras.getBoolean(WdbAudioPlayerSessionService.RESULT_DID_LOAD, false)
+        if (didLoad) return Result.success(Unit)
+        val message = result.extras.getString(WdbAudioPlayerSessionService.RESULT_ERROR_MESSAGE)
+            ?: "Failed to load player"
+        return Result.failure(IllegalStateException(message))
     }
 
     private suspend fun loadSampleWithCommand(isbn: String): Boolean {
@@ -375,7 +382,7 @@ class WdbAudioPlayerScreenViewModel(application: Application) : AndroidViewModel
 
     private fun onDownloadStateChanged(currentState: WdbDownloadState?) {
         val selectedCheckout = checkout.value ?: return
-        if (selectedCheckout.type != MaterialType.Audiobook) return
+        if (!selectedCheckout.type.isAudio) return
         if (previousDownloadState != WdbDownloadState.Finished && currentState == WdbDownloadState.Finished) {
             viewModelScope.launch {
                 runCatching {
@@ -386,7 +393,7 @@ class WdbAudioPlayerScreenViewModel(application: Application) : AndroidViewModel
                         checkout = selectedCheckout,
                         coverUrl = coverUrl,
                         initialProgressMs = currentPosition
-                    )
+                    ).isSuccess
                     if (reloaded) {
                         if (wasPlaying) {
                             withControllerOnMain { it.play() }

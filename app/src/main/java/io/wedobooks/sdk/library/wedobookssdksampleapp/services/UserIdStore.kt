@@ -17,11 +17,23 @@ class UserIdStore(private val store: KeyValueStore) {
         store.putString(key(envId), encode(updated))
     }
 
+    /** Appends each of [uids] not seeded before, so a forgotten seed is not re-added. */
+    fun seed(envId: String, uids: List<String>) {
+        val seeded = decode(store.getString(seededKey(envId)))
+        val fresh = uids.map { it.trim() }.filter { it.isNotEmpty() && it !in seeded }
+        if (fresh.isEmpty()) return
+
+        store.putString(key(envId), encode((all(envId) + fresh).distinct()))
+        store.putString(seededKey(envId), encode(seeded + fresh))
+    }
+
     fun forget(envId: String, uid: String) {
         store.putString(key(envId), encode(all(envId).filterNot { it == uid }))
     }
 
     private fun key(envId: String) = "user_ids_$envId"
+
+    private fun seededKey(envId: String) = "seeded_user_ids_$envId"
 
     private fun encode(uids: List<String>): String =
         JSONArray().apply { uids.forEach { put(it) } }.toString()

@@ -13,7 +13,6 @@ import androidx.compose.runtime.setValue
 import io.wedobooks.sdk.WeDoBooksSdk
 import io.wedobooks.sdk.models.Checkout
 import io.wedobooks.sdk.models.WdbPlayerUiState
-import io.wedobooks.sdk.models.enums.MaterialType
 import io.wedobooks.sdk.models.enums.WdbDownloadState
 import io.wedobooks.sdk.library.wedobookssdksampleapp.ui.components.AudioDownloadCard
 import io.wedobooks.sdk.library.wedobookssdksampleapp.ui.components.HeadlessAudioPlayerCallbacks
@@ -54,34 +53,32 @@ fun HeadlessAudioScreen(
         .collectAsState(initial = emptyMap())
     val downloadStatus = activeCheckout?.materialId?.let { audioDownloads[it] }
 
-    val canDownload = activeCheckout?.type == MaterialType.Audiobook && (
-        downloadStatus == null ||
-            downloadStatus.state == WdbDownloadState.NotStarted ||
-            downloadStatus.state == WdbDownloadState.Cancelled ||
-            downloadStatus.state == WdbDownloadState.Error
-        )
-    val canDelete = activeCheckout?.type == MaterialType.Audiobook &&
-        downloadStatus != null &&
-        downloadStatus.state != WdbDownloadState.NotStarted
+    val canDownload = activeCheckout?.type?.isAudio == true && (
+            downloadStatus == null ||
+                    downloadStatus.state == WdbDownloadState.NotStarted ||
+                    downloadStatus.state == WdbDownloadState.Cancelled ||
+                    downloadStatus.state == WdbDownloadState.Error
+            )
+    val canDelete = activeCheckout?.type?.isAudio == true &&
+            downloadStatus != null &&
+            downloadStatus.state != WdbDownloadState.NotStarted
     val isDownloading = downloadStatus?.state == WdbDownloadState.Downloading ||
-        downloadStatus?.state == WdbDownloadState.Waiting
+            downloadStatus?.state == WdbDownloadState.Waiting
 
     val playbackSpeed = playerUiState.playbackSpeed ?: 1f
-    val controlsEnabled = didLoad && isPlayerReady && !isLoading &&
-        activeCheckout?.type == MaterialType.Audiobook
+    val canControlPlayback = didLoad && isPlayerReady && !isLoading &&
+            activeCheckout?.type?.isAudio == true
 
     var previousDownloadState by remember(activeCheckout?.materialId) {
         mutableStateOf<WdbDownloadState?>(null)
     }
-
-    // ---- Effects ---------------------------------------------------------
     LaunchedEffect(checkout?.id) {
         activeCheckout = checkout
     }
 
     LaunchedEffect(activeCheckout?.materialId) {
         val selectedCheckout = activeCheckout
-        if (selectedCheckout?.type == MaterialType.Audiobook) {
+        if (selectedCheckout?.type?.isAudio == true) {
             isLoading = true
             statusMessage = "Loading…"
             isPlayerReady = false
@@ -111,7 +108,7 @@ fun HeadlessAudioScreen(
     }
 
     LaunchedEffect(didLoad, activeCheckout?.materialId, playerUiState) {
-        if (didLoad && activeCheckout?.type == MaterialType.Audiobook) {
+        if (didLoad && activeCheckout?.type?.isAudio == true) {
             isPlayingState =
                 (playerUiState.isPlaying == true) || (playerUiState.playWhenReady == true)
             if (playerUiState.playbackState == STATE_READY) {
@@ -122,7 +119,7 @@ fun HeadlessAudioScreen(
     }
 
     LaunchedEffect(didLoad, activeCheckout?.materialId) {
-        while (didLoad && activeCheckout?.type == MaterialType.Audiobook) {
+        while (didLoad && activeCheckout?.type?.isAudio == true) {
             val updated = try {
                 WeDoBooksSdk.headlessAudioPlayer.withAudioController {
                     currentPositionMsState = it.currentPositionMs
@@ -144,7 +141,7 @@ fun HeadlessAudioScreen(
     LaunchedEffect(downloadStatus?.state, activeCheckout?.materialId) {
         val currentState = downloadStatus?.state
         if (
-            activeCheckout?.type == MaterialType.Audiobook &&
+            activeCheckout?.type?.isAudio == true &&
             previousDownloadState != WdbDownloadState.Finished &&
             currentState == WdbDownloadState.Finished
         ) {
@@ -159,7 +156,10 @@ fun HeadlessAudioScreen(
     }
 
     // ---- Controller-bound callbacks --------------------------------------
-    fun withController(name: String, block: (controller: io.wedobooks.sdk.models.WdbAudioController) -> Unit) {
+    fun withController(
+        name: String,
+        block: (controller: io.wedobooks.sdk.models.WdbAudioController) -> Unit,
+    ) {
         coroutineScope.launch {
             runCatching {
                 WeDoBooksSdk.headlessAudioPlayer.withAudioController {
@@ -187,8 +187,8 @@ fun HeadlessAudioScreen(
             positionMs = currentPositionMsState,
             durationMs = totalDurationMsState,
             playbackSpeed = playbackSpeed,
-            controlsEnabled = controlsEnabled,
-            playPauseEnabled = controlsEnabled,
+            controlsEnabled = canControlPlayback,
+            playPauseEnabled = canControlPlayback,
         ),
         callbacks = HeadlessAudioPlayerCallbacks(
             onClose = goBack,
@@ -218,10 +218,13 @@ fun HeadlessAudioScreen(
         AudioDownloadCard(
             downloadState = downloadStatus?.state,
             downloadProgress = (downloadStatus?.progress ?: 0.0).toFloat(),
+            downloadedBytes = downloadStatus?.downloadedBytes ?: 0L,
+            totalBytes = downloadStatus?.totalBytes,
+            downloadError = downloadStatus?.error,
             isDownloading = isDownloading,
             canDownload = canDownload,
             canDelete = canDelete,
-            canStop = activeCheckout?.type == MaterialType.Audiobook,
+            canStop = activeCheckout?.type?.isAudio == true,
             stopLabel = "Stop audio service",
             onDownload = {
                 activeCheckout?.let { selectedCheckout ->

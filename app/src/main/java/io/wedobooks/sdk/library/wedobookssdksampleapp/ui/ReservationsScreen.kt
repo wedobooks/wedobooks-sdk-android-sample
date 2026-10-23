@@ -7,7 +7,9 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
@@ -16,6 +18,8 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
@@ -28,12 +32,14 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import io.wedobooks.sdk.WeDoBooksSdk
-import io.wedobooks.sdk.library.wedobookssdksampleapp.Constants
+import io.wedobooks.sdk.R
 import io.wedobooks.sdk.library.wedobookssdksampleapp.books.TestBook
 import io.wedobooks.sdk.library.wedobookssdksampleapp.ui.components.SavedIsbnPicker
 import io.wedobooks.sdk.models.Reservation
@@ -61,9 +67,44 @@ fun ReservationsScreen(
         .collectAsState(initial = emptyList())
 
     var showReserveSheet by remember { mutableStateOf(false) }
-    var busyReservationId by remember { mutableStateOf<String?>(null) }
+    var busyMaterialId by remember { mutableStateOf<String?>(null) }
     var acceptingOfferId by remember { mutableStateOf<String?>(null) }
-    var cancellingOfferId by remember { mutableStateOf<String?>(null) }
+
+    val entries = remember(reservations, offers) { mergeReservations(reservations, offers) }
+
+    fun cancel(materialId: String) {
+        coroutineScope.launch {
+            busyMaterialId = materialId
+            val message = runCatching {
+                val ok = WeDoBooksSdk.reservationOperations.removeReservation(materialId)
+                if (ok) "Reservation cancelled" else "Cancel returned false"
+            }.getOrElse { "Cancel failed: ${it.cause?.message ?: it.message}" }
+            Toast.makeText(context, message, Toast.LENGTH_LONG).show()
+            busyMaterialId = null
+        }
+    }
+
+    fun accept(offer: ReservationOffer) {
+        coroutineScope.launch {
+            acceptingOfferId = offer.id
+            val message = runCatching {
+                val response = WeDoBooksSdk.reservationOperations.acceptReservationOffer(offer.id)
+                if (response.success) {
+                    "Offer accepted — loan ${response.loanId}"
+                } else {
+                    buildString {
+                        append("Offer not accepted")
+                        response.canLoan?.let { append(" · "); append(it.name) }
+                        response.quotaReject?.let {
+                            append(" (quota "); append(it.quota); append(")")
+                        }
+                    }
+                }
+            }.getOrElse { "Accept failed: ${it.cause?.message ?: it.message}" }
+            Toast.makeText(context, message, Toast.LENGTH_LONG).show()
+            acceptingOfferId = null
+        }
+    }
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -77,74 +118,19 @@ fun ReservationsScreen(
             )
         }
 
-        item(key = "reservations-header") { SectionLabel("Reservations (${reservations.size})") }
-        if (reservations.isEmpty()) {
+        item(key = "reservations-header") {
+            SectionLabel("Reservations (${entries.size}) · offers (${offers.size})")
+        }
+        if (entries.isEmpty()) {
             item(key = "reservations-empty") { EmptyLabel("No reservations yet") }
         } else {
-            items(items = reservations, key = { "res-${it.id}" }) { reservation ->
+            items(items = entries, key = { it.key }) { entry ->
                 ReservationCard(
-                    reservation = reservation,
-                    isBusy = busyReservationId == reservation.id,
-                    onDelete = {
-                        coroutineScope.launch {
-                            busyReservationId = reservation.id
-                            val message = runCatching {
-                                val ok = WeDoBooksSdk.reservationOperations
-                                    .removeReservation(reservation.materialId)
-                                if (ok) "Reservation deleted" else "Delete returned false"
-                            }.getOrElse { "Delete failed: ${it.cause?.message ?: it.message}" }
-                            Toast.makeText(context, message, Toast.LENGTH_LONG).show()
-                            busyReservationId = null
-                        }
-                    },
-                )
-            }
-        }
-
-        item(key = "offers-header") { SectionLabel("Offers (${offers.size})") }
-        if (offers.isEmpty()) {
-            item(key = "offers-empty") { EmptyLabel("No active offers") }
-        } else {
-            items(items = offers, key = { "offer-${it.id}" }) { offer ->
-                OfferCard(
-                    offer = offer,
-                    isAccepting = acceptingOfferId == offer.id,
-                    isCancelling = cancellingOfferId == offer.id,
-                    onAccept = {
-                        coroutineScope.launch {
-                            acceptingOfferId = offer.id
-                            val message = runCatching {
-                                val response = WeDoBooksSdk.reservationOperations
-                                    .acceptReservationOffer(offer.id)
-                                if (response.success) {
-                                    "Offer accepted — loan ${response.loanId}"
-                                } else {
-                                    buildString {
-                                        append("Offer not accepted")
-                                        response.canLoan?.let { append(" · "); append(it.name) }
-                                        response.quotaReject?.let {
-                                            append(" (quota "); append(it.quota); append(")")
-                                        }
-                                    }
-                                }
-                            }.getOrElse { "Accept failed: ${it.cause?.message ?: it.message}" }
-                            Toast.makeText(context, message, Toast.LENGTH_LONG).show()
-                            acceptingOfferId = null
-                        }
-                    },
-                    onCancel = {
-                        coroutineScope.launch {
-                            cancellingOfferId = offer.id
-                            // Cancelling an offer is done by deleting its underlying reservation.
-                            val message = runCatching {
-                                val ok = WeDoBooksSdk.reservationOperations
-                                    .removeReservation(offer.materialId)
-                                if (ok) "Offer cancelled" else "Cancel returned false"
-                            }.getOrElse { "Cancel failed: ${it.cause?.message ?: it.message}" }
-                            Toast.makeText(context, message, Toast.LENGTH_LONG).show()
-                            cancellingOfferId = null
-                        }
-                    },
+                    entry = entry,
+                    isCancelling = busyMaterialId == entry.materialId,
+                    isAccepting = entry.offer?.id != null && acceptingOfferId == entry.offer.id,
+                    onCancel = { cancel(entry.materialId) },
+                    onAccept = { entry.offer?.let(::accept) },
                 )
             }
         }
@@ -172,7 +158,7 @@ private fun ReserveBookSheet(
 ) {
     val sheetState = rememberModalBottomSheetState()
     val coroutineScope = rememberCoroutineScope()
-    var isbn by remember { mutableStateOf(Constants.RESERVATION_BOOK.orEmpty()) }
+    var isbn by remember { mutableStateOf("") }
     var isReserving by remember { mutableStateOf(false) }
     var result by remember { mutableStateOf<String?>(null) }
 
@@ -198,6 +184,13 @@ private fun ReserveBookSheet(
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
             )
+            result?.let {
+                Text(
+                    text = it,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    style = MaterialTheme.typography.bodySmall,
+                )
+            }
             CustomButton(
                 title = "Reserve",
                 isLoading = isReserving,
@@ -228,76 +221,95 @@ private fun ReserveBookSheet(
                 },
                 onForget = onForgetIsbn,
             )
-            result?.let {
-                Text(
-                    text = it,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    style = MaterialTheme.typography.bodySmall,
-                )
-            }
         }
     }
 }
 
-@Composable
-private fun ReservationCard(
-    reservation: Reservation,
-    isBusy: Boolean,
-    onDelete: () -> Unit,
+/**
+ * A reservation and the offer that fulfils it, if one is open. An offer whose
+ * reservation is no longer listed still gets a card, with [reservation] null.
+ */
+private class ReservationEntry(
+    val reservation: Reservation?,
+    val offer: ReservationOffer?,
 ) {
-    Card {
-        Text(
-            text = "ISBN ${reservation.materialId}",
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            style = MaterialTheme.typography.titleSmall,
-            fontWeight = FontWeight.SemiBold,
-        )
-        reservation.queuePosition?.let { MetaRow("Queue position", it.toString()) }
-        MetaRow("Type", reservation.type.name)
-        MetaRow("Material", reservation.materialType.name)
-        MetaRow("Loan date", dateFormatter.format(reservation.loanDate))
-        if (reservation.wordCount > 0) MetaRow("Words", reservation.wordCount.toString())
-        if (reservation.duration > 0) MetaRow("Duration", "${reservation.duration}s")
-        CustomButton(
-            title = "Delete reservation",
-            isLoading = isBusy,
-            color = MaterialTheme.colorScheme.secondary,
-            textColor = MaterialTheme.colorScheme.onSecondary,
-            onClick = onDelete,
-        )
+    val materialId: String get() = reservation?.materialId ?: offer!!.materialId
+    val key: String get() = reservation?.let { "res-${it.id}" } ?: "offer-${offer!!.id}"
+}
+
+private fun mergeReservations(
+    reservations: List<Reservation>,
+    offers: List<ReservationOffer>,
+): List<ReservationEntry> {
+    val offersByReservation = offers.associateBy { it.reservationId }
+    val matched = mutableSetOf<String>()
+    val entries = reservations.map { reservation ->
+        val offer = offersByReservation[reservation.id]
+            ?: offers.firstOrNull { it.materialId == reservation.materialId }
+        offer?.let { matched += it.id }
+        ReservationEntry(reservation, offer)
     }
+    val orphans = offers.filterNot { it.id in matched }.map { ReservationEntry(null, it) }
+    return entries + orphans
 }
 
 @Composable
-private fun OfferCard(
-    offer: ReservationOffer,
-    isAccepting: Boolean,
+private fun ReservationCard(
+    entry: ReservationEntry,
     isCancelling: Boolean,
-    onAccept: () -> Unit,
+    isAccepting: Boolean,
     onCancel: () -> Unit,
+    onAccept: () -> Unit,
 ) {
     Card {
-        Text(
-            text = "ISBN ${offer.materialId}",
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            style = MaterialTheme.typography.titleSmall,
-            fontWeight = FontWeight.SemiBold,
-        )
-        MetaRow("Status", offer.status.name)
-        MetaRow("Expires", dateFormatter.format(offer.expiresAt))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                modifier = Modifier.weight(1f),
+                text = "ISBN ${entry.materialId}",
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.SemiBold,
+            )
+            // Cancelling an offer deletes its underlying reservation, so one control covers both.
+            // 48dp touch target, pulled right so the 24dp glyph ends flush with the value column.
+            if (isCancelling) {
+                Spinner(modifier = Modifier.size(24.dp))
+            } else {
+                IconButton(
+                    modifier = Modifier
+                        .size(48.dp)
+                        .offset(x = 12.dp),
+                    enabled = !isAccepting,
+                    onClick = onCancel,
+                ) {
+                    Icon(
+                        painter = painterResource(R.drawable.wdb_ic_close),
+                        tint = MaterialTheme.colorScheme.primary,
+                        contentDescription = "Cancel reservation",
+                    )
+                }
+            }
+        }
+        entry.reservation?.let { reservation ->
+            reservation.queuePosition?.let { MetaRow("Queue position", it.toString()) }
+            MetaRow("Type", reservation.type.name)
+            MetaRow("Material", reservation.materialType.name)
+            MetaRow("Loan date", dateFormatter.format(reservation.loanDate))
+            if (reservation.wordCount > 0) MetaRow("Words", reservation.wordCount.toString())
+            if (reservation.duration > 0) MetaRow("Duration", "${reservation.duration}s")
+        }
+        entry.offer?.let { offer ->
+            MetaRow("Offer", offer.status.name)
+            MetaRow("Offer expires", dateFormatter.format(offer.expiresAt))
+        }
         CustomButton(
-            title = "Accept offer",
+            title = if (entry.offer != null) "Accept offer" else "No offer yet",
             isLoading = isAccepting,
-            enabled = !isCancelling,
+            enabled = entry.offer != null && !isCancelling,
             onClick = onAccept,
-        )
-        CustomButton(
-            title = "Cancel offer",
-            isLoading = isCancelling,
-            enabled = !isAccepting,
-            color = MaterialTheme.colorScheme.secondary,
-            textColor = MaterialTheme.colorScheme.onSecondary,
-            onClick = onCancel,
         )
     }
 }

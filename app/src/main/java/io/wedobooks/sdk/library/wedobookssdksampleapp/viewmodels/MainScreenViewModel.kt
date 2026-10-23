@@ -14,10 +14,11 @@ import io.wedobooks.sdk.library.wedobookssdksampleapp.books.TestBook
 import io.wedobooks.sdk.library.wedobookssdksampleapp.books.TestBooks
 import io.wedobooks.sdk.library.wedobookssdksampleapp.books.mergeBooks
 import io.wedobooks.sdk.library.wedobookssdksampleapp.environment.AppEnvironment
+import io.wedobooks.sdk.library.wedobookssdksampleapp.models.LoanResult
 import io.wedobooks.sdk.library.wedobookssdksampleapp.services.AuthService
+import io.wedobooks.sdk.library.wedobookssdksampleapp.settings.BookScreenSettings
+import io.wedobooks.sdk.library.wedobookssdksampleapp.settings.applyToSdk
 import io.wedobooks.sdk.library.wedobookssdksampleapp.storage.SampleStores
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 private const val TAG = "MainScreenViewModel"
@@ -25,7 +26,6 @@ private const val TAG = "MainScreenViewModel"
 class MainScreenViewModel : ViewModel() {
     val authService = AuthService.instance
     val isAddingToHistory = mutableStateOf(false)
-    val didCheckoutFail = MutableStateFlow(false)
 
     /**
      * ISBNs with a checkout in flight. Per-ISBN rather than per-type, so two
@@ -35,6 +35,9 @@ class MainScreenViewModel : ViewModel() {
 
     /** The seed list merged with whatever this environment has remembered. */
     var books by mutableStateOf(emptyList<TestBook>())
+        private set
+
+    var bookScreenSettings by mutableStateOf(SampleStores.bookScreenSettings.load())
         private set
 
     private val envId get() = AppEnvironment.current.id
@@ -48,20 +51,19 @@ class MainScreenViewModel : ViewModel() {
      * [Checkout] are remembered for this environment; on failure nothing is
      * stored, so unreachable ISBNs never clutter the list.
      */
-    suspend fun getCheckout(isbn: String): Checkout? {
+    suspend fun loanBook(isbn: String): LoanResult {
         val trimmed = isbn.trim()
-        if (trimmed.isEmpty()) return null
+        if (trimmed.isEmpty()) return LoanResult.Failed("No ISBN")
 
         checkoutsInFlight.value = checkoutsInFlight.value + trimmed
         return try {
             val checkout = WeDoBooksSdk.bookOperations.checkoutBook(trimmed)
             SampleStores.books.remember(envId, trimmed, checkout.title)
             refreshBooks()
-            checkout
+            LoanResult.Loaned(checkout)
         } catch (e: Exception) {
             Log.d(TAG, "err: ${e.message}")
-            didCheckoutFail.update { true }
-            null
+            LoanResult.from(e)
         } finally {
             checkoutsInFlight.value = checkoutsInFlight.value - trimmed
         }
@@ -143,6 +145,13 @@ class MainScreenViewModel : ViewModel() {
         }
     }
 
+    /** Saves [settings] and applies them to the SDK; books opened from now on use them. */
+    fun updateBookScreenSettings(settings: BookScreenSettings) {
+        bookScreenSettings = settings
+        SampleStores.bookScreenSettings.save(settings)
+        settings.applyToSdk()
+    }
+
     fun stopAudio() {
         WeDoBooksSdk.bookOperations.stopAudioPlayer()
     }
@@ -153,6 +162,10 @@ class MainScreenViewModel : ViewModel() {
 
     fun removeStorage() {
         WeDoBooksSdk.storageOperations.removeAll()
+    }
+
+    fun refreshDownloads() {
+        WeDoBooksSdk.storageOperations.refreshDownloads()
     }
 
     fun toggleDownload(checkout: Checkout, status: WdbDownloadStatus?) {

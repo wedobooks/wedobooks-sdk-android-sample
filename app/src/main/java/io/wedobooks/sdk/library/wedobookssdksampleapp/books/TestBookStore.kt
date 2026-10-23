@@ -49,11 +49,34 @@ class TestBookStore(private val store: KeyValueStore) {
         store.putString(key(envId), encode(updated))
     }
 
+    /** Appends each of [isbns] not seeded before, so a forgotten seed is not re-added. */
+    fun seed(envId: String, isbns: List<String>) {
+        val seeded = decodeIsbns(store.getString(seededKey(envId)))
+        val fresh = isbns.map { it.trim() }.filter { it.isNotEmpty() && it !in seeded }.distinct()
+        if (fresh.isEmpty()) return
+
+        val existing = all(envId)
+        val additions = fresh.filter { isbn -> existing.none { it.isbn == isbn } }
+        store.putString(key(envId), encode(existing + additions.map { TestBook(isbn = it) }))
+        store.putString(
+            seededKey(envId),
+            JSONArray().apply { (seeded + fresh).forEach { put(it) } }.toString(),
+        )
+    }
+
     fun forget(envId: String, isbn: String) {
         store.putString(key(envId), encode(all(envId).filterNot { it.isbn == isbn }))
     }
 
     private fun key(envId: String) = "test_books_$envId"
+
+    private fun seededKey(envId: String) = "seeded_test_books_$envId"
+
+    private fun decodeIsbns(raw: String?): List<String> {
+        if (raw.isNullOrBlank()) return emptyList()
+        val array = JSONArray(raw)
+        return (0 until array.length()).map { array.getString(it) }
+    }
 
     private fun encode(books: List<TestBook>): String =
         JSONArray().apply {

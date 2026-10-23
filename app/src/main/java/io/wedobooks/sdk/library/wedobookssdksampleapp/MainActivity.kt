@@ -50,9 +50,11 @@ import androidx.navigation.compose.rememberNavController
 import io.wedobooks.sdk.R
 import io.wedobooks.sdk.WeDoBooksSdk
 import io.wedobooks.sdk.models.Checkout
+import io.wedobooks.sdk.models.WdbBookProgress
 import io.wedobooks.sdk.models.WdbPlaybackStopReason
 import io.wedobooks.sdk.models.enums.MaterialType
 import io.wedobooks.sdk.library.wedobookssdksampleapp.ui.DownloadedBooksScreen
+import io.wedobooks.sdk.library.wedobookssdksampleapp.ui.StorageUsageScreen
 import io.wedobooks.sdk.library.wedobookssdksampleapp.ui.DevicesScreen
 import io.wedobooks.sdk.library.wedobookssdksampleapp.ui.HeadlessAudioSampleScreen
 import io.wedobooks.sdk.library.wedobookssdksampleapp.ui.HeadlessAudioScreen
@@ -63,6 +65,7 @@ import io.wedobooks.sdk.library.wedobookssdksampleapp.ui.WdbAudioPlayerSampleScr
 import io.wedobooks.sdk.library.wedobookssdksampleapp.ui.WdbAudioPlayerScreen
 import io.wedobooks.sdk.library.wedobookssdksampleapp.ui.theme.WeDoBooksSdkTheme
 import io.wedobooks.sdk.library.wedobookssdksampleapp.services.AuthService
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
 
@@ -180,6 +183,9 @@ class MainActivity : ComponentActivity() {
                                 goToDownloadedBooks ={
                                     mainNavController.navigate(Routes.downloadedBooks)
                                 },
+                                goToStorageUsage = {
+                                    mainNavController.navigate(Routes.storageUsage)
+                                },
                                 goToDevices = {
                                     mainNavController.navigate(Routes.devices)
                                 },
@@ -216,15 +222,7 @@ class MainActivity : ComponentActivity() {
                                 onCloseClick = {
                                     mainNavController.popBackStack()
                                 },
-                                onFinishClick = { finishedCheckout ->
-                                    Log.d(
-                                        TAG,
-                                        "Finish button clicked for checkoutId=${finishedCheckout.id}"
-                                    )
-                                },
-                                isFinishButtonEnabled = true,
-                                isMinimizeButtonEnabled = true,
-                                onAudioMinimizeClick = null, // different behavior for minimize else defaults to onCloseClick without stopping audio
+                                // minimize/finish buttons and pull-down top come from WeDoBooksSdk.configuration (Settings → Book screen)
                                 initialAudioBookProgressMs = null, // only used if internalProgressConfig.player = false
                                 initialReaderCfi = null, // only used if internalProgressConfig.reader = false
                                 viewModelStoreOwner = null, // if you want to save state outside this composable
@@ -262,6 +260,13 @@ class MainActivity : ComponentActivity() {
                         }
                         composable(route = Routes.downloadedBooks) {
                             DownloadedBooksScreen(
+                                goBack = {
+                                    mainNavController.popBackStack()
+                                }
+                            )
+                        }
+                        composable(route = Routes.storageUsage) {
+                            StorageUsageScreen(
                                 goBack = {
                                     mainNavController.popBackStack()
                                 }
@@ -413,6 +418,45 @@ fun EasyAccess(
                     },
                 )
 
+                // Typed progress also carries the exact stored position. The card only draws the
+                // percentage bar, so the ebook CFI / audiobook timestamp go to the log to show
+                // what the API hands back.
+                val progressDetails by remember(checkout.materialId) {
+                    WeDoBooksSdk.bookOperations
+                        .bookProgressFlow(checkout.materialId)
+                        .catch { error ->
+                            Log.e(
+                                TAG,
+                                "Easy access progress failed for ${checkout.materialId}",
+                                error,
+                            )
+                            Toast.makeText(ctx, error.message, Toast.LENGTH_SHORT).show()
+                            emit(null)
+                        }
+                }.collectAsState(null)
+
+                LaunchedEffect(progressDetails) {
+                    when (val details = progressDetails) {
+                        is WdbBookProgress.Audiobook -> Log.d(
+                            TAG,
+                            "Easy access audiobook ${details.materialId}: " +
+                                "${details.timestampSeconds}s (${details.timestampMilliseconds}ms), " +
+                                "progress=${details.progress}",
+                        )
+
+                        is WdbBookProgress.Ebook -> Log.d(
+                            TAG,
+                            "Easy access ebook ${details.materialId}: " +
+                                "cfi=${details.cfi}, progress=${details.progress}",
+                        )
+
+                        null -> Log.d(
+                            TAG,
+                            "Easy access ${checkout.materialId}: no stored progress yet",
+                        )
+                    }
+                }
+
                 SwipeToDismissBox(
                     state = dismissState,
                     modifier = modifier,
@@ -442,7 +486,9 @@ fun EasyAccess(
                                 trackColor = MaterialTheme.colorScheme.outline,
                                 color = MaterialTheme.colorScheme.primary,
                                 progress = {
-                                    easyAccessState?.progress?.toFloat() ?: 0f
+                                    progressDetails?.progress?.toFloat()
+                                        ?: easyAccessState?.progress?.toFloat()
+                                        ?: 0f
                                 },
                             )
 

@@ -8,6 +8,7 @@ object Routes {
     val login = "login"
     val stats = "stats"
     val downloadedBooks = "downloaded_books"
+    val storageUsage = "storage_usage"
     val devices = "devices"
 
     const val ISBN_ARG = "isbn"

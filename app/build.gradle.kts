@@ -60,4 +60,5 @@ dependencies {
     implementation(libs.androidx.navigation.compose)
     implementation(libs.okhttp)
     implementation(libs.androidx.media3.session)
+    implementation(libs.androidx.datastore.preferences)
 }

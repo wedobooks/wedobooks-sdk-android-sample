@@ -21,8 +21,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import io.wedobooks.sdk.models.WdbException
 import io.wedobooks.sdk.models.enums.WdbDownloadState
 import io.wedobooks.sdk.library.wedobookssdksampleapp.ui.CustomButton
+import io.wedobooks.sdk.library.wedobookssdksampleapp.ui.formatDownloadBytes
 
 /**
  * Card that wraps the download status + download / delete actions and an
@@ -38,6 +40,9 @@ import io.wedobooks.sdk.library.wedobookssdksampleapp.ui.CustomButton
 internal fun AudioDownloadCard(
     downloadState: WdbDownloadState?,
     downloadProgress: Float,
+    downloadedBytes: Long,
+    totalBytes: Long?,
+    downloadError: WdbException?,
     isDownloading: Boolean,
     canDownload: Boolean,
     canDelete: Boolean,
@@ -90,7 +95,13 @@ internal fun AudioDownloadCard(
                 fontWeight = FontWeight.SemiBold,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            DownloadStatusRow(state = downloadState, progress = downloadProgress)
+            DownloadStatusRow(
+                state = downloadState,
+                progress = downloadProgress,
+                downloadedBytes = downloadedBytes,
+                totalBytes = totalBytes,
+                error = downloadError,
+            )
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -142,16 +153,21 @@ private enum class PendingAction { Downloading, Deleting }
 private fun DownloadStatusRow(
     state: WdbDownloadState?,
     progress: Float,
+    downloadedBytes: Long,
+    totalBytes: Long?,
+    error: WdbException? = null,
 ) {
     val pct = (progress.coerceIn(0f, 1f) * 100).toInt()
+    val bytes = formatDownloadBytes(downloadedBytes, totalBytes)?.let { " ($it)" }.orEmpty()
     val label = when (state) {
         null, WdbDownloadState.NotStarted -> "Not downloaded"
-        WdbDownloadState.Waiting -> "Waiting…"
-        WdbDownloadState.Downloading -> "Downloading… $pct%"
-        WdbDownloadState.Paused -> "Paused at $pct%"
-        WdbDownloadState.Finished -> "Stored on device"
+        WdbDownloadState.Waiting -> "Waiting…$bytes"
+        WdbDownloadState.Downloading -> "Downloading… $pct%$bytes"
+        WdbDownloadState.Paused -> "Paused at $pct%$bytes"
+        WdbDownloadState.Finished -> "Stored on device$bytes"
         WdbDownloadState.Cancelled -> "Cancelled"
-        WdbDownloadState.Error -> "Failed"
+        WdbDownloadState.Error ->
+            if (error is WdbException.InsufficientStorage) "Not enough storage" else "Failed"
     }
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Text(

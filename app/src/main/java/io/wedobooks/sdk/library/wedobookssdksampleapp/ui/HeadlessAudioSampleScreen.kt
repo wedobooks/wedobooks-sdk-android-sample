@@ -52,7 +52,7 @@ fun HeadlessAudioSampleScreen(
         .collectAsState(initial = WdbPlayerUiState())
 
     val playbackSpeed = playerUiState.playbackSpeed ?: 1f
-    val controlsEnabled = didLoad && isPlayerReady && !isLoading
+    val canControlPlayback = didLoad && isPlayerReady && !isLoading
 
     LaunchedEffect(isbn) {
         isLoading = true
@@ -132,8 +132,8 @@ fun HeadlessAudioSampleScreen(
             positionMs = currentPositionMsState,
             durationMs = totalDurationMsState,
             playbackSpeed = playbackSpeed,
-            controlsEnabled = controlsEnabled,
-            playPauseEnabled = controlsEnabled,
+            controlsEnabled = canControlPlayback,
+            playPauseEnabled = canControlPlayback,
         ),
         callbacks = HeadlessAudioPlayerCallbacks(
             onClose = goBack,

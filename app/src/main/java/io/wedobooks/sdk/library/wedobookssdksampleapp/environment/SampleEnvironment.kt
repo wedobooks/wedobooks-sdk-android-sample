@@ -15,4 +15,8 @@ data class SampleEnvironment(
     // Internal SDK progress tracking, per material: player = audiobook, reader = ebook.
     val internalProgressPlayer: Boolean = true,
     val internalProgressReader: Boolean = true,
+    // Added to the saved user IDs on the login screen once; forgetting one there sticks.
+    val seedUserIds: List<String> = emptyList(),
+    // Added to the saved books once, like seedUserIds.
+    val seedIsbns: List<String> = emptyList(),
 )
