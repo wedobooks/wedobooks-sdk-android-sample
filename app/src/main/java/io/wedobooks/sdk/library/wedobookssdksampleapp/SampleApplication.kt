@@ -7,7 +7,6 @@ import io.wedobooks.sdk.WeDoBooksSdk
 import io.wedobooks.sdk.library.wedobookssdksampleapp.environment.AppEnvironment
 import io.wedobooks.sdk.library.wedobookssdksampleapp.settings.applyToSdk
 import io.wedobooks.sdk.library.wedobookssdksampleapp.storage.SampleStores
-import io.wedobooks.sdk.library.wedobookssdksampleapp.ui.theme.*
 import io.wedobooks.sdk.models.Checkout
 import io.wedobooks.sdk.models.WdbConfiguration
 import io.wedobooks.sdk.models.WdbInternalProgressConfig
@@ -52,30 +51,6 @@ class SampleApplication : Application() {
             ),
             themeConfig = WdbThemeConfiguration
                 .builder()
-                .apply {
-                    setLightTheme(
-                        onPrimary = lightOnPrimary,
-                        primaryColor = lightPrimary,
-                        onSecondary = lightOnSecondary,
-                        secondaryColor = lightSecondary,
-                        background = lightBackground,
-                        backgroundBright = lightBackgroundBright,
-                        outline = lightOutline,
-                        textColor = lightTextColor,
-                        textColorVar = lightTextColorVar,
-                    )
-                    setDarkTheme(
-                        onPrimary = darkOnPrimary,
-                        primaryColor = darkPrimary,
-                        onSecondary = darkOnSecondary,
-                        secondaryColor = darkSecondary,
-                        background = darkBackground,
-                        backgroundBright = darkBackgroundBright,
-                        outline = darkOutline,
-                        textColor = darkTextColor,
-                        textColorVar = darkTextColorVar,
-                    )
-                }
                 .build()
         )
         WeDoBooksSdk.configuration.setPlayerConfiguration(
