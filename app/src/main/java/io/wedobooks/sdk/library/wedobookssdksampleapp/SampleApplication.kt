@@ -2,11 +2,16 @@ package io.wedobooks.sdk.library.wedobookssdksampleapp
 
 import android.app.Application
 import android.util.Log
+import android.widget.Toast
 import io.wedobooks.sdk.WeDoBooksSdk
 import io.wedobooks.sdk.library.wedobookssdksampleapp.environment.AppEnvironment
+import io.wedobooks.sdk.library.wedobookssdksampleapp.settings.applyToSdk
 import io.wedobooks.sdk.library.wedobookssdksampleapp.storage.SampleStores
+import io.wedobooks.sdk.models.Checkout
 import io.wedobooks.sdk.models.WdbConfiguration
 import io.wedobooks.sdk.models.WdbInternalProgressConfig
+import io.wedobooks.sdk.models.WdbPlayerConfiguration
+import io.wedobooks.sdk.models.WdbReaderConfiguration
 import io.wedobooks.sdk.models.WdbThemeConfiguration
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -26,6 +31,8 @@ class SampleApplication : Application() {
         // process, so the environment is fixed for this process's lifetime.
         AppEnvironment.init(applicationContext)
         SampleStores.init(applicationContext)
+        SampleStores.userIds.seed(AppEnvironment.current.id, AppEnvironment.current.seedUserIds)
+        SampleStores.books.seed(AppEnvironment.current.id, AppEnvironment.current.seedIsbns)
 
         WeDoBooksSdk.setup(
             context = applicationContext,
@@ -46,6 +53,19 @@ class SampleApplication : Application() {
                 .builder()
                 .build()
         )
+        WeDoBooksSdk.configuration.setPlayerConfiguration(
+            WdbPlayerConfiguration(
+                onTappedMinimizeButton = { checkout -> reportBookScreenTap("Player minimized", checkout) },
+                onTappedFinishBookButton = { checkout -> reportBookScreenTap("Player finish tapped", checkout) },
+            )
+        )
+        WeDoBooksSdk.configuration.setReaderConfiguration(
+            WdbReaderConfiguration(
+                onTappedFinishBookButton = { checkout -> reportBookScreenTap("Reader finish tapped", checkout) },
+            )
+        )
+        // Also installs the local highlight copy when that setting is on.
+        SampleStores.bookScreenSettings.load().applyToSdk()
 
         // Observe SDK background errors (Firestore permission failures, etc.).
         // The SDK already prevents them from crashing the process; this lets
@@ -56,5 +76,10 @@ class SampleApplication : Application() {
                 Log.e(TAG, "SDK background error", error)
             }
             .launchIn(applicationScope)
+    }
+
+    private fun reportBookScreenTap(action: String, checkout: Checkout) {
+        Log.d(TAG, "$action for checkoutId=${checkout.id}")
+        Toast.makeText(this, "$action: ${checkout.title}", Toast.LENGTH_SHORT).show()
     }
 }

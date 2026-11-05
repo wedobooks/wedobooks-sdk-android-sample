@@ -1,5 +1,6 @@
 package io.wedobooks.sdk.library.wedobookssdksampleapp.ui
 
+import android.widget.Toast
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -25,11 +26,13 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import io.wedobooks.sdk.R
+import io.wedobooks.sdk.models.WdbStorageUsage
 import io.wedobooks.sdk.library.wedobookssdksampleapp.viewmodels.DownloadedBooksViewModel
 
 @Composable
@@ -38,9 +41,18 @@ fun DownloadedBooksScreen(
 ) {
     val viewModel: DownloadedBooksViewModel = viewModel()
     val downloadedList: List<String> by viewModel.downloadedListFlow.collectAsState(emptyList())
+    val usage: WdbStorageUsage? by viewModel.usageFlow.collectAsState()
+    val error: String? by viewModel.errorFlow.collectAsState()
+    val context = LocalContext.current
 
     LaunchedEffect(Unit) {
         viewModel.getDownloadedBooks()
+    }
+    LaunchedEffect(error) {
+        error?.let {
+            Toast.makeText(context, it, Toast.LENGTH_SHORT).show()
+            viewModel.clearError()
+        }
     }
 
     Column(
@@ -93,6 +105,17 @@ fun DownloadedBooksScreen(
             }
         }
 
+        usage?.let {
+            Text(
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+                text = "Downloaded ${formatBytes(it.downloadedBytes)} · " +
+                    "Stream cache ${formatBytes(it.cachedBytes)} · " +
+                    "Total ${formatBytes(it.totalBytes)}",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
+            )
+        }
+
         // ---- Content -------------------------------------------------------
         if (downloadedList.isEmpty()) {
             EmptyState()
@@ -119,6 +142,7 @@ private fun androidx.compose.foundation.lazy.LazyListScope.items(downloaded: Lis
 @Composable
 private fun DownloadedBookCard(isbn: String) {
     val viewModel: DownloadedBooksViewModel = viewModel()
+    val storage = viewModel.bookStorageFlow.collectAsState().value[isbn]
     ElevatedCard(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
@@ -141,7 +165,10 @@ private fun DownloadedBookCard(isbn: String) {
                     fontWeight = FontWeight.SemiBold,
                 )
                 Text(
-                    text = "Stored locally",
+                    text = storage?.let {
+                        "Downloaded ${it.downloadedBytes?.let(::formatBytes) ?: "–"}" +
+                            " · Stream cache ${formatBytes(it.cachedBytes)}"
+                    } ?: "Stored locally",
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
                 )

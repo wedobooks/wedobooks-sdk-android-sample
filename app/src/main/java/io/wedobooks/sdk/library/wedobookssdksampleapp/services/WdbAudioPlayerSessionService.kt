@@ -2,6 +2,7 @@ package io.wedobooks.sdk.library.wedobookssdksampleapp.services
 
 import android.content.Intent
 import android.os.Bundle
+import android.widget.Toast
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import androidx.media3.common.util.UnstableApi
@@ -14,14 +15,18 @@ import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
 import com.google.common.util.concurrent.SettableFuture
 import io.wedobooks.sdk.WeDoBooksSdk
-import io.wedobooks.sdk.library.wedobookssdksampleapp.utils.toCheckout
 import io.wedobooks.sdk.models.Checkout
 import io.wedobooks.sdk.models.CustomCover
 import io.wedobooks.sdk.models.WdbAudioPlayer
+import io.wedobooks.sdk.models.WdbPlaybackStopReason
+import io.wedobooks.sdk.library.wedobookssdksampleapp.utils.toCheckout
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -35,6 +40,7 @@ class WdbAudioPlayerSessionService : MediaLibraryService() {
         private const val SESSION_ID = "custom_player_session"
         const val LOAD_BOOK_COMMAND = "custom_player.load_book"
         const val RESULT_DID_LOAD = "result_did_load"
+        const val RESULT_ERROR_MESSAGE = "result_error_message"
         const val ARG_COVER_URL = "arg_cover_url"
         const val ARG_INITIAL_PROGRESS_MS = "arg_initial_progress_ms"
         const val LOAD_SAMPLE_COMMAND = "custom_player.load_sample"
@@ -69,6 +75,18 @@ class WdbAudioPlayerSessionService : MediaLibraryService() {
             .setCoroutineContext(Dispatchers.Main.immediate)
             .build()
         player = builtPlayer
+        builtPlayer.stopReason
+            .onEach { reason ->
+                val message = when (reason) {
+                    is WdbPlaybackStopReason.AccessExpired ->
+                        "Access expired for ${reason.materialId} — playback stopped"
+                    is WdbPlaybackStopReason.SessionLost ->
+                        "Playing on another device — playback stopped"
+                    null -> return@onEach
+                }
+                Toast.makeText(this, message, Toast.LENGTH_LONG).show()
+            }
+            .launchIn(serviceScope)
         session = MediaLibrarySession.Builder(this, builtPlayer, callback)
             .setId(SESSION_ID)
             .build()
@@ -86,18 +104,12 @@ class WdbAudioPlayerSessionService : MediaLibraryService() {
         // audio/UI desync. The SDK's own AudioServiceManager stops the current content first too.
         currentPlayer.stop()
         val cover = coverUrl?.let { CustomCover.Url(it) }
-        if (initialProgressMs != null) {
-            currentPlayer.loadBook(
-                checkout = checkout,
-                cover = cover,
-                initialProgressMs = initialProgressMs
-            )
-        } else {
-            currentPlayer.loadBook(
-                checkout = checkout,
-                cover = cover,
-            )
-        }
+        // loadBook throws on every failure, so reaching prepare() means it loaded.
+        currentPlayer.loadBook(
+            checkout = checkout,
+            cover = cover,
+            initialProgressMs = initialProgressMs,
+        )
         currentPlayer.prepare()
         true
     }
@@ -149,11 +161,14 @@ class WdbAudioPlayerSessionService : MediaLibraryService() {
                 }
                 val coverUrl = args.getString(ARG_COVER_URL)
                 serviceScope.launch {
-                    val loaded = runCatching {
+                    val outcome = runCatching {
                         loadSampleInternal(isbn = isbn, coverUrl = coverUrl)
-                    }.getOrDefault(false)
+                    }
+                    outcome.exceptionOrNull()?.let { if (it is CancellationException) throw it }
+                    val loaded = outcome.getOrDefault(false)
                     val extras = Bundle().apply {
                         putBoolean(RESULT_DID_LOAD, loaded)
+                        outcome.exceptionOrNull()?.let { putString(RESULT_ERROR_MESSAGE, it.message) }
                     }
                     resultFuture.set(
                         SessionResult(
@@ -178,15 +193,19 @@ class WdbAudioPlayerSessionService : MediaLibraryService() {
                 .takeIf { it >= 0L }
 
             serviceScope.launch {
-                val loaded = runCatching {
+                val outcome = runCatching {
                     loadBookInternal(
                         checkout = checkout,
                         coverUrl = coverUrl,
                         initialProgressMs = initialProgressMs
                     )
-                }.getOrDefault(false)
+                }
+                outcome.exceptionOrNull()?.let { if (it is CancellationException) throw it }
+                val loaded = outcome.getOrDefault(false)
+                // loadBook throws on every failure — hand the reason back to the screen.
                 val extras = Bundle().apply {
                     putBoolean(RESULT_DID_LOAD, loaded)
+                    outcome.exceptionOrNull()?.let { putString(RESULT_ERROR_MESSAGE, it.message) }
                 }
                 resultFuture.set(
                     SessionResult(

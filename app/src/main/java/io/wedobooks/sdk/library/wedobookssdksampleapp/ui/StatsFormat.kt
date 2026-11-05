@@ -30,3 +30,21 @@ internal fun formatThousands(value: Int): String {
     }
     return if (negative) "-$sb" else sb.toString()
 }
+
+/** `512` → `"512 B"`, `2048` → `"2 kB"`, `1572864` → `"1.5 MB"`. */
+internal fun formatBytes(bytes: Long): String = when {
+    bytes >= 1L shl 20 -> "%.1f MB".format(bytes / (1024.0 * 1024.0))
+    bytes >= 1L shl 10 -> "%.0f kB".format(bytes / 1024.0)
+    else -> "$bytes B"
+}
+
+/**
+ * `"12.3 MB / 27.1 MB"` while the total is known, `"12.3 MB"` while it is not, and `null` when
+ * nothing has been written yet.
+ */
+internal fun formatDownloadBytes(downloadedBytes: Long, totalBytes: Long?): String? {
+    if (downloadedBytes <= 0L && (totalBytes ?: 0L) <= 0L) return null
+    val downloaded = formatBytes(downloadedBytes)
+    if (totalBytes == null || totalBytes <= 0L) return downloaded
+    return "$downloaded / ${formatBytes(totalBytes)}"
+}

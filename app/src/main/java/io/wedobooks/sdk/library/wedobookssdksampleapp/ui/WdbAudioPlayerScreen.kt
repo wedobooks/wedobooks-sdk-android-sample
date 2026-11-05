@@ -6,7 +6,6 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.viewmodel.compose.viewModel
 import io.wedobooks.sdk.models.Checkout
-import io.wedobooks.sdk.models.enums.MaterialType
 import io.wedobooks.sdk.models.enums.WdbDownloadState
 import io.wedobooks.sdk.library.wedobookssdksampleapp.ui.components.AudioDownloadCard
 import io.wedobooks.sdk.library.wedobookssdksampleapp.ui.components.HeadlessAudioPlayerCallbacks
@@ -32,8 +31,8 @@ fun WdbAudioPlayerScreen(
         vm.loadPlayer()
     }
 
-    val isAudio = uiState.checkout?.type == MaterialType.Audiobook
-    val controlsEnabled = isAudio && uiState.didLoad && uiState.isPlayerReady && !uiState.isLoading
+    val isAudio = uiState.checkout?.type?.isAudio == true
+    val canControlPlayback = isAudio && uiState.didLoad && uiState.isPlayerReady && !uiState.isLoading
     val isDownloading = uiState.downloadStatus?.state == WdbDownloadState.Downloading ||
         uiState.downloadStatus?.state == WdbDownloadState.Waiting
 
@@ -51,8 +50,8 @@ fun WdbAudioPlayerScreen(
             positionMs = uiState.currentPositionMs,
             durationMs = uiState.totalDurationMs,
             playbackSpeed = uiState.playbackSpeed,
-            controlsEnabled = controlsEnabled,
-            playPauseEnabled = controlsEnabled,
+            controlsEnabled = canControlPlayback,
+            playPauseEnabled = canControlPlayback,
         ),
         callbacks = HeadlessAudioPlayerCallbacks(
             onClose = goBack,
@@ -66,6 +65,9 @@ fun WdbAudioPlayerScreen(
         AudioDownloadCard(
             downloadState = uiState.downloadStatus?.state,
             downloadProgress = (uiState.downloadStatus?.progress ?: 0.0).toFloat(),
+            downloadedBytes = uiState.downloadStatus?.downloadedBytes ?: 0L,
+            totalBytes = uiState.downloadStatus?.totalBytes,
+            downloadError = uiState.downloadStatus?.error,
             isDownloading = isDownloading,
             canDownload = uiState.canDownload,
             canDelete = uiState.canDelete,

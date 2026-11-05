@@ -23,6 +23,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
@@ -44,21 +45,25 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import io.wedobooks.sdk.WeDoBooksSdk
 import io.wedobooks.sdk.library.wedobookssdksampleapp.Constants
 import io.wedobooks.sdk.library.wedobookssdksampleapp.environment.AppEnvironment
 import io.wedobooks.sdk.library.wedobookssdksampleapp.ui.components.SavedIsbnPicker
+import io.wedobooks.sdk.library.wedobookssdksampleapp.ui.components.SettingSwitchRow
 import io.wedobooks.sdk.library.wedobookssdksampleapp.viewmodels.MainScreenViewModel
 import io.wedobooks.sdk.models.Checkout
 import io.wedobooks.sdk.models.SdkMode
 import io.wedobooks.sdk.models.WdbDownloadStatus
-import io.wedobooks.sdk.models.enums.MaterialType
+import io.wedobooks.sdk.models.WdbException
 import io.wedobooks.sdk.models.enums.WdbDownloadState
+import io.wedobooks.sdk.models.enums.WdbReaderBrightnessMode
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -70,6 +75,7 @@ fun MainScreen(
     goToWdbAudioPlayer: () -> Unit,
     goToLogin: () -> Unit,
     goToDownloadedBooks: () -> Unit,
+    goToStorageUsage: () -> Unit,
     goToDevices: () -> Unit,
     goToSampleEbook: (String) -> Unit,
     goToSampleAudiobook: (String) -> Unit,
@@ -158,6 +164,7 @@ fun MainScreen(
                     vm = vm,
                     goToLogin = goToLogin,
                     goToDownloadedBooks = goToDownloadedBooks,
+                    goToStorageUsage = goToStorageUsage,
                     goToDevices = goToDevices,
                     toggleDarkMode = toggleDarkMode,
                 )
@@ -188,6 +195,7 @@ private fun CheckoutsTab(
         initial = emptyMap()
     )
     var showLoanSheet by remember { mutableStateOf(false) }
+    var selectedMaterialId by remember { mutableStateOf<String?>(null) }
 
     val checkouts = allCheckouts
         .sortedByDescending { it.active }
@@ -223,51 +231,9 @@ private fun CheckoutsTab(
         }
         checkouts.forEach { checkout ->
             item(key = "checkout-${checkout.materialId}") {
-                val downloadStatus = bookDownloads[checkout.materialId]
-
-                // Optimistic flag for the download button. Flipped to true the
-                // moment the user clicks Download / Remove so the UI changes
-                // immediately, instead of waiting the ~hundreds of ms it takes
-                // for `bookDownloadsFlow` to emit the new state.
-                //
-                // We snapshot the pre-click state and clear the flag as soon
-                // as the real state diverges, handing control back to the
-                // SDK-driven status.
-                var isTogglePending by remember(checkout.materialId) { mutableStateOf(false) }
-                var stateAtClick: WdbDownloadState? by remember(checkout.materialId) {
-                    mutableStateOf(null)
-                }
-                LaunchedEffect(downloadStatus?.state) {
-                    if (isTogglePending && downloadStatus?.state != stateAtClick) {
-                        isTogglePending = false
-                    }
-                }
-
-                BookCard(
+                CheckoutCard(
                     checkout = checkout,
-                    downloadStatus = downloadStatus,
-                    isTogglePending = isTogglePending,
-                    onOpen = {
-                        setCheckout(checkout)
-                        goToReader()
-                    },
-                    onHeadlessAudio = {
-                        setCheckout(checkout)
-                        goToHeadlessAudio()
-                    },
-                    onWdbAudioPlayer = {
-                        setCheckout(checkout)
-                        goToWdbAudioPlayer()
-                    },
-                    onToggleDownload = {
-                        stateAtClick = downloadStatus?.state
-                        isTogglePending = true
-                        vm.toggleDownload(checkout, downloadStatus)
-                    },
-                    onReadSample = { goToSampleEbook(checkout.materialId) },
-                    onPlaySample = { goToSampleAudiobook(checkout.materialId) },
-                    onHeadlessSample = { goToHeadlessSampleAudio(checkout.materialId) },
-                    onWdbSample = { goToWdbSampleAudio(checkout.materialId) },
+                    onClick = { selectedMaterialId = checkout.materialId },
                 )
             }
         }
@@ -276,87 +242,175 @@ private fun CheckoutsTab(
     if (showLoanSheet) {
         LoanBookSheet(vm = vm, onDismiss = { showLoanSheet = false })
     }
+
+    // Looked up by id so the sheet follows checkout updates and closes if the checkout goes away.
+    checkouts.firstOrNull { it.materialId == selectedMaterialId }?.let { checkout ->
+        val dismiss = { selectedMaterialId = null }
+        CheckoutActionsSheet(
+            checkout = checkout,
+            downloadStatus = bookDownloads[checkout.materialId],
+            onDismiss = dismiss,
+            onOpen = {
+                dismiss()
+                setCheckout(checkout)
+                goToReader()
+            },
+            onHeadlessAudio = {
+                dismiss()
+                setCheckout(checkout)
+                goToHeadlessAudio()
+            },
+            onWdbAudioPlayer = {
+                dismiss()
+                setCheckout(checkout)
+                goToWdbAudioPlayer()
+            },
+            onToggleDownload = { status -> vm.toggleDownload(checkout, status) },
+            onReadSample = {
+                dismiss()
+                goToSampleEbook(checkout.materialId)
+            },
+            onPlaySample = {
+                dismiss()
+                goToSampleAudiobook(checkout.materialId)
+            },
+            onHeadlessSample = {
+                dismiss()
+                goToHeadlessSampleAudio(checkout.materialId)
+            },
+            onWdbSample = {
+                dismiss()
+                goToWdbSampleAudio(checkout.materialId)
+            },
+        )
+    }
 }
 
-/**
- * One active checkout. Everything shown comes from the [Checkout] itself -
- * the book model carries no type, and `checkout.type` decides which open
- * actions apply.
- */
 @Composable
-private fun BookCard(
+private fun CheckoutCard(
+    checkout: Checkout,
+    onClick: () -> Unit,
+) {
+    ElevatedCard(
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.elevatedCardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant,
+        ),
+        elevation = CardDefaults.elevatedCardElevation(defaultElevation = 1.dp),
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(
+                painter = painterResource(checkout.type.iconRes()),
+                contentDescription = checkout.type.name,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(24.dp),
+            )
+            Text(
+                modifier = Modifier.padding(start = 12.dp),
+                text = checkout.title.ifBlank { checkout.materialId },
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                style = MaterialTheme.typography.titleSmall,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+    }
+}
+
+/** The actions for one checkout; `checkout.type` decides which open actions apply. */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun CheckoutActionsSheet(
     checkout: Checkout,
     downloadStatus: WdbDownloadStatus?,
-    isTogglePending: Boolean,
+    onDismiss: () -> Unit,
     onOpen: () -> Unit,
     onHeadlessAudio: () -> Unit,
     onWdbAudioPlayer: () -> Unit,
-    onToggleDownload: () -> Unit,
+    onToggleDownload: (WdbDownloadStatus?) -> Unit,
     onReadSample: () -> Unit,
     onPlaySample: () -> Unit,
     onHeadlessSample: () -> Unit,
     onWdbSample: () -> Unit,
 ) {
+    // Optimistic flag for the download button: set on click so the label changes
+    // immediately, cleared once `bookDownloadsFlow` emits a state different from
+    // the one at click time.
+    var isTogglePending by remember { mutableStateOf(false) }
+    var stateAtClick: WdbDownloadState? by remember { mutableStateOf(null) }
+    LaunchedEffect(downloadStatus?.state) {
+        if (isTogglePending && downloadStatus?.state != stateAtClick) {
+            isTogglePending = false
+        }
+    }
+
     val downloadUiState = downloadStatus.toDownloadButtonState(
         hasSelectedCheckout = true,
         isTogglePending = isTogglePending,
     )
-    val isAudiobook = checkout.type == MaterialType.Audiobook
+    val isAudio = checkout.type.isAudio
 
-    ElevatedCard(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.elevatedCardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant,
-        ),
-        elevation = CardDefaults.elevatedCardElevation(defaultElevation = 2.dp),
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 14.dp),
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 24.dp)
+                .padding(bottom = 32.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            // -- Header --------------------------------------------------------
             Column(modifier = Modifier.fillMaxWidth()) {
                 Text(
                     text = checkout.title.ifBlank { checkout.materialId },
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.SemiBold,
                 )
                 val authors = checkout.author.joinToString(", ")
                 if (authors.isNotBlank()) {
                     Text(
                         text = authors,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
                         style = MaterialTheme.typography.labelSmall,
                     )
                 }
                 Text(
                     text = "ISBN ${checkout.materialId} \u00B7 ${checkout.type.name}",
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
                     style = MaterialTheme.typography.bodySmall,
                 )
             }
 
-            // -- Checkout actions ---------------------------------------------
             CardSectionHeader(title = "Checkout")
             CustomButton(
-                title = if (isAudiobook) "Play (SDK player)" else "Read (SDK reader)",
+                title = if (isAudio) "Play (SDK player)" else "Read (SDK reader)",
                 onClick = onOpen,
             )
-            if (isAudiobook) {
+            if (isAudio) {
                 CustomButton(title = "Play (headless \u00B7 custom UI)", onClick = onHeadlessAudio)
                 CustomButton(title = "Play (Media3 builder)", onClick = onWdbAudioPlayer)
             }
             CustomButton(
                 title = downloadUiState.title,
                 enabled = downloadUiState.enabled,
-                onClick = onToggleDownload,
+                onClick = {
+                    stateAtClick = downloadStatus?.state
+                    isTogglePending = true
+                    onToggleDownload(downloadStatus)
+                },
             )
 
-            // -- Sample actions (no checkout needed) ---------------------------
+            // Samples need no checkout.
             CardSectionHeader(title = "Sample")
             CustomButton(title = "Read sample (SDK reader)", onClick = onReadSample)
             CustomButton(title = "Play sample (SDK player)", onClick = onPlaySample)
@@ -374,9 +428,13 @@ private fun LoanBookSheet(
 ) {
     val sheetState = rememberModalBottomSheetState()
     val coroutineScope = rememberCoroutineScope()
-    val context = LocalContext.current
     val inFlight by vm.checkoutsInFlight
     var isbn by remember { mutableStateOf("") }
+    var result by remember { mutableStateOf<String?>(null) }
+
+    fun loan(target: String) {
+        coroutineScope.launch { result = vm.loanBook(target).describe(target) }
+    }
 
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
         Column(
@@ -406,51 +464,24 @@ private fun LoanBookSheet(
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
             )
+            result?.let {
+                Text(
+                    text = it,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    style = MaterialTheme.typography.bodySmall,
+                )
+            }
             CustomButton(
                 title = "Loan",
                 isLoading = inFlight.contains(isbn.trim()),
                 enabled = isbn.isNotBlank(),
-                onClick = {
-                    val target = isbn.trim()
-                    coroutineScope.launch {
-                        val checkout = vm.getCheckout(target)
-                        if (checkout != null) {
-                            isbn = ""
-                            onDismiss()
-                            Toast.makeText(
-                                context,
-                                "Loaned ${checkout.title.ifBlank { target }}",
-                                Toast.LENGTH_SHORT,
-                            ).show()
-                        } else {
-                            Toast.makeText(
-                                context,
-                                "Could not loan $target",
-                                Toast.LENGTH_SHORT,
-                            ).show()
-                        }
-                    }
-                },
+                onClick = { loan(isbn.trim()) },
             )
             SavedIsbnPicker(
                 books = vm.books,
                 actionLabel = "LOAN",
                 busyIsbns = inFlight,
-                onAction = { saved ->
-                    coroutineScope.launch {
-                        val checkout = vm.getCheckout(saved)
-                        Toast.makeText(
-                            context,
-                            if (checkout != null) {
-                                "Loaned ${checkout.title.ifBlank { saved }}"
-                            } else {
-                                "Could not loan $saved"
-                            },
-                            Toast.LENGTH_SHORT,
-                        ).show()
-                        if (checkout != null) onDismiss()
-                    }
-                },
+                onAction = ::loan,
                 onForget = { vm.forgetBook(it) },
             )
         }
@@ -494,6 +525,7 @@ private fun SettingsTab(
     vm: MainScreenViewModel,
     goToLogin: () -> Unit,
     goToDownloadedBooks: () -> Unit,
+    goToStorageUsage: () -> Unit,
     goToDevices: () -> Unit,
     toggleDarkMode: () -> Unit,
 ) {
@@ -503,6 +535,7 @@ private fun SettingsTab(
     }
 
     var showHistorySheet by remember { mutableStateOf(false) }
+    val bookScreenSettings = vm.bookScreenSettings
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -510,8 +543,14 @@ private fun SettingsTab(
         verticalArrangement = Arrangement.spacedBy(10.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        // Storage — downloaded books + bulk clear.
+        // Storage — usage breakdown, downloaded books + bulk clear.
         section("Storage") {
+            item {
+                CustomButton(
+                    title = "Storage usage",
+                    onClick = goToStorageUsage,
+                )
+            }
             item {
                 CustomButton(
                     title = "Downloaded books",
@@ -522,6 +561,12 @@ private fun SettingsTab(
                 CustomButton(
                     title = "Clear all downloads",
                     onClick = { vm.removeStorage() },
+                )
+            }
+            item {
+                CustomButton(
+                    title = "Refresh downloads",
+                    onClick = { vm.refreshDownloads() },
                 )
             }
         }
@@ -542,6 +587,84 @@ private fun SettingsTab(
                 CustomButton(
                     title = "Stop audio playback",
                     onClick = { vm.stopAudio() },
+                )
+            }
+        }
+
+        // Book screen — set{Player,Reader}Configuration, applied to the next book opened.
+        section("Book screen") {
+            item {
+                SettingSwitchRow(
+                    title = "Player minimize button",
+                    checked = bookScreenSettings.showPlayerMinimizeButton,
+                    onCheckedChange = {
+                        vm.updateBookScreenSettings(bookScreenSettings.copy(showPlayerMinimizeButton = it))
+                    },
+                )
+            }
+            item {
+                SettingSwitchRow(
+                    title = "Player finish button",
+                    checked = bookScreenSettings.showPlayerFinishButton,
+                    onCheckedChange = {
+                        vm.updateBookScreenSettings(bookScreenSettings.copy(showPlayerFinishButton = it))
+                    },
+                )
+            }
+            item {
+                SettingSwitchRow(
+                    title = "Reader pull-down top",
+                    checked = bookScreenSettings.readerPullDownTop,
+                    onCheckedChange = {
+                        vm.updateBookScreenSettings(bookScreenSettings.copy(readerPullDownTop = it))
+                    },
+                )
+            }
+            item {
+                SettingSwitchRow(
+                    title = "Reader header animation",
+                    checked = bookScreenSettings.readerShowHeaderAnimation,
+                    onCheckedChange = {
+                        vm.updateBookScreenSettings(bookScreenSettings.copy(readerShowHeaderAnimation = it))
+                    },
+                )
+            }
+            item {
+                SettingSwitchRow(
+                    title = "Reader finish button",
+                    checked = bookScreenSettings.showReaderFinishButton,
+                    onCheckedChange = {
+                        vm.updateBookScreenSettings(bookScreenSettings.copy(showReaderFinishButton = it))
+                    },
+                )
+            }
+            item {
+                SettingSwitchRow(
+                    title = "Reader brightness changes device setting",
+                    checked = bookScreenSettings.readerBrightnessMode == WdbReaderBrightnessMode.System,
+                    onCheckedChange = {
+                        val mode =
+                            if (it) WdbReaderBrightnessMode.System else WdbReaderBrightnessMode.Window
+                        vm.updateBookScreenSettings(bookScreenSettings.copy(readerBrightnessMode = mode))
+                    },
+                )
+            }
+            item {
+                SettingSwitchRow(
+                    title = "Remember reader brightness",
+                    checked = bookScreenSettings.rememberReaderBrightness,
+                    onCheckedChange = {
+                        vm.updateBookScreenSettings(bookScreenSettings.copy(rememberReaderBrightness = it))
+                    },
+                )
+            }
+            item {
+                SettingSwitchRow(
+                    title = "Local highlight storage",
+                    checked = bookScreenSettings.useLocalHighlightStorage,
+                    onCheckedChange = {
+                        vm.updateBookScreenSettings(bookScreenSettings.copy(useLocalHighlightStorage = it))
+                    },
                 )
             }
         }
@@ -721,7 +844,10 @@ private fun WdbDownloadStatus?.toDownloadButtonState(
         WdbDownloadState.Downloading,
         WdbDownloadState.Waiting,
         -> DownloadButtonState(
-            title = "Downloading ${(progress * 100).toInt().coerceIn(0, 100)}%",
+            title = buildString {
+                append("Downloading ${(progress * 100).toInt().coerceIn(0, 100)}%")
+                formatDownloadBytes(downloadedBytes, totalBytes)?.let { append(" ($it)") }
+            },
             enabled = false,
         )
 
@@ -734,7 +860,11 @@ private fun WdbDownloadStatus?.toDownloadButtonState(
         )
 
         WdbDownloadState.Error -> DownloadButtonState(
-            title = "Download error — retry",
+            title = if (this?.error is WdbException.InsufficientStorage) {
+                "Not enough storage — retry"
+            } else {
+                "Download error — retry"
+            },
             enabled = true,
         )
 

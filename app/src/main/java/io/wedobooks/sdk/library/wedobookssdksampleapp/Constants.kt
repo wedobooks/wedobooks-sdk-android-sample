@@ -17,7 +17,4 @@ object Constants {
     val SDK_MODE: SdkMode get() = env.sdkMode
     val INTERNAL_PROGRESS_PLAYER: Boolean get() = env.internalProgressPlayer
     val INTERNAL_PROGRESS_READER: Boolean get() = env.internalProgressReader
-
-    /** Pre-fills the reserve field on the Reservations tab. */
-    val RESERVATION_BOOK: String? get() = null
 }
