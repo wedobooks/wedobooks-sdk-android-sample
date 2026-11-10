@@ -1,10 +1,13 @@
 package io.wedobooks.sdk.library.wedobookssdksampleapp.ui
 
+import androidx.annotation.OptIn
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.media3.cast.MediaRouteButton
+import androidx.media3.common.util.UnstableApi
 import io.wedobooks.sdk.models.Checkout
 import io.wedobooks.sdk.models.enums.WdbDownloadState
 import io.wedobooks.sdk.library.wedobookssdksampleapp.ui.components.AudioDownloadCard
@@ -18,6 +21,7 @@ import io.wedobooks.sdk.library.wedobookssdksampleapp.viewmodels.WdbAudioPlayerS
  * connected to [io.wedobooks.sdk.library.wedobookssdksampleapp.services.WdbAudioPlayerSessionService]
  * and renders the shared [HeadlessAudioPlayerLayout].
  */
+@OptIn(UnstableApi::class)
 @Composable
 fun WdbAudioPlayerScreen(
     checkout: Checkout?,
@@ -61,6 +65,7 @@ fun WdbAudioPlayerScreen(
             onTogglePlayPause = vm::togglePlayPause,
             onSpeedSelected = vm::setPlaybackSpeed,
         ),
+        topBarActions = { MediaRouteButton() },
     ) {
         AudioDownloadCard(
             downloadState = uiState.downloadStatus?.state,

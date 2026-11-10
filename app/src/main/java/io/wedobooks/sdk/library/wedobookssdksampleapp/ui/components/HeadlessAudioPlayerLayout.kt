@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
@@ -103,6 +104,7 @@ internal val HEADLESS_SPEED_PRESETS = listOf(0.75f, 1.0f, 1.25f, 1.5f, 2.0f)
 internal fun HeadlessAudioPlayerLayout(
     state: HeadlessAudioPlayerUiState,
     callbacks: HeadlessAudioPlayerCallbacks,
+    topBarActions: @Composable RowScope.() -> Unit = {},
     bottomContent: @Composable ColumnScope.() -> Unit = {},
 ) {
     val scrollState = rememberScrollState()
@@ -126,7 +128,7 @@ internal fun HeadlessAudioPlayerLayout(
             .fillMaxSize()
             .verticalScroll(scrollState),
     ) {
-        TopBar(title = state.screenTitle, onClose = callbacks.onClose)
+        TopBar(title = state.screenTitle, onClose = callbacks.onClose, actions = topBarActions)
         StatusSubheader(left = state.isbnLabel, right = state.statusMessage)
         Spacer(modifier = Modifier.height(8.dp))
         CoverPlaceholder()
@@ -173,7 +175,11 @@ internal fun HeadlessAudioPlayerLayout(
 // ---- Sub-pieces -------------------------------------------------------------
 
 @Composable
-private fun TopBar(title: String, onClose: () -> Unit) {
+private fun TopBar(
+    title: String,
+    onClose: () -> Unit,
+    actions: @Composable RowScope.() -> Unit = {},
+) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -194,6 +200,8 @@ private fun TopBar(title: String, onClose: () -> Unit) {
             fontWeight = FontWeight.SemiBold,
             color = MaterialTheme.colorScheme.onBackground,
         )
+        Spacer(modifier = Modifier.weight(1f))
+        actions()
     }
 }
 

@@ -73,6 +73,7 @@ class WdbAudioPlayerSessionService : MediaLibraryService() {
     private fun attachSession() {
         val builtPlayer = WeDoBooksSdk.wdbAudioPlayerBuilder()
             .setCoroutineContext(Dispatchers.Main.immediate)
+            .enableCast()
             .build()
         player = builtPlayer
         builtPlayer.stopReason

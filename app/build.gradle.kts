@@ -6,14 +6,14 @@ plugins {
 
 android {
     namespace = "io.wedobooks.sdk.library.wedobookssdksampleapp"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "io.wedobooks.sdk.library.wedobookssdksampleapp"
         minSdk = 26
         targetSdk = 35
         versionCode = 17
-        versionName = "1.11.0"
+        versionName = "1.12.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -60,5 +60,7 @@ dependencies {
     implementation(libs.androidx.navigation.compose)
     implementation(libs.okhttp)
     implementation(libs.androidx.media3.session)
+    implementation(libs.androidx.media3.cast)
+    implementation(libs.gms.play.services.cast.framework)
     implementation(libs.androidx.datastore.preferences)
 }
