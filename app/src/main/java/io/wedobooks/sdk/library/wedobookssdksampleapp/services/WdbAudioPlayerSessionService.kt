@@ -2,6 +2,7 @@ package io.wedobooks.sdk.library.wedobookssdksampleapp.services
 
 import android.content.Intent
 import android.os.Bundle
+import android.util.Log
 import android.widget.Toast
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
@@ -78,6 +79,7 @@ class WdbAudioPlayerSessionService : MediaLibraryService() {
         player = builtPlayer
         builtPlayer.stopReason
             .onEach { reason ->
+                Log.d("WdbAudioPlayerSession", "stopReason= $reason")
                 val message = when (reason) {
                     is WdbPlaybackStopReason.AccessExpired ->
                         "Access expired for ${reason.materialId} — playback stopped"
