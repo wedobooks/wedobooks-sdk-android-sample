@@ -66,6 +66,10 @@ import io.wedobooks.sdk.models.enums.WdbDownloadState
 import io.wedobooks.sdk.models.enums.WdbReaderBrightnessMode
 import kotlinx.coroutines.launch
 
+/** Passed to the next book opened; blank sends no id. */
+var partnerCorrelationIdInput by mutableStateOf("")
+val partnerCorrelationId get() = partnerCorrelationIdInput.ifEmpty { null }
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainScreen(
@@ -392,6 +396,13 @@ private fun CheckoutActionsSheet(
             }
 
             CardSectionHeader(title = "Checkout")
+            OutlinedTextField(
+                value = partnerCorrelationIdInput,
+                onValueChange = { partnerCorrelationIdInput = it },
+                label = { Text("Partner correlation id (optional)") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+            )
             CustomButton(
                 title = if (isAudio) "Play (SDK player)" else "Read (SDK reader)",
                 onClick = onOpen,

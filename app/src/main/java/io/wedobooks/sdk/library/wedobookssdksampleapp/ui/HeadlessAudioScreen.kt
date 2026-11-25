@@ -86,6 +86,7 @@ fun HeadlessAudioScreen(
                 WeDoBooksSdk.headlessAudioPlayer.loadAudioBook(
                     checkout = selectedCheckout,
                     cover = null,
+                    partnerCorrelationId = partnerCorrelationId,
                 )
                 true
             } catch (e: Exception) {

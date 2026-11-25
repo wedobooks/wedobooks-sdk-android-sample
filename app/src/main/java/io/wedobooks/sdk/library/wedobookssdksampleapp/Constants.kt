@@ -15,6 +15,7 @@ object Constants {
     val READER_API_KEY: String get() = env.readerApiKey
     val READER_API_SECRET: String get() = env.readerApiSecret
     val SDK_MODE: SdkMode get() = env.sdkMode
+    val CLIENT_ID: String? get() = env.clientId
     val INTERNAL_PROGRESS_PLAYER: Boolean get() = env.internalProgressPlayer
     val INTERNAL_PROGRESS_READER: Boolean get() = env.internalProgressReader
 }

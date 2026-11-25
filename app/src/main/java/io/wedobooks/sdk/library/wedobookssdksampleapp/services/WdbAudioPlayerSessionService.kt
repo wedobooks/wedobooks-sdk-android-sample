@@ -20,6 +20,7 @@ import io.wedobooks.sdk.models.Checkout
 import io.wedobooks.sdk.models.CustomCover
 import io.wedobooks.sdk.models.WdbAudioPlayer
 import io.wedobooks.sdk.models.WdbPlaybackStopReason
+import io.wedobooks.sdk.library.wedobookssdksampleapp.ui.partnerCorrelationId
 import io.wedobooks.sdk.library.wedobookssdksampleapp.utils.toCheckout
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -112,6 +113,7 @@ class WdbAudioPlayerSessionService : MediaLibraryService() {
             checkout = checkout,
             cover = cover,
             initialProgressMs = initialProgressMs,
+            partnerCorrelationId = partnerCorrelationId,
         )
         currentPlayer.prepare()
         true
