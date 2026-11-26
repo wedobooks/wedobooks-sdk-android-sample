@@ -12,6 +12,8 @@ data class SampleEnvironment(
     val customTokenUrl: String,
     val readerApiKey: String,
     val readerApiSecret: String,
+    // Library mode only; must be approved for your project, null sends none.
+    val clientId: String? = null,
     // Internal SDK progress tracking, per material: player = audiobook, reader = ebook.
     val internalProgressPlayer: Boolean = true,
     val internalProgressReader: Boolean = true,

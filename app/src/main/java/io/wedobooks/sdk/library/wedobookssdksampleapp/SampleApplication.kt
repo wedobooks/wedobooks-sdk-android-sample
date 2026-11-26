@@ -48,6 +48,7 @@ class SampleApplication : Application() {
                     reader = Constants.INTERNAL_PROGRESS_READER,
                 ),
                 sdkMode = Constants.SDK_MODE,
+                clientId = Constants.CLIENT_ID,
             ),
             themeConfig = WdbThemeConfiguration
                 .builder()

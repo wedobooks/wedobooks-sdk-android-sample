@@ -60,6 +60,7 @@ import io.wedobooks.sdk.library.wedobookssdksampleapp.ui.HeadlessAudioSampleScre
 import io.wedobooks.sdk.library.wedobookssdksampleapp.ui.HeadlessAudioScreen
 import io.wedobooks.sdk.library.wedobookssdksampleapp.ui.LoginScreen
 import io.wedobooks.sdk.library.wedobookssdksampleapp.ui.MainScreen
+import io.wedobooks.sdk.library.wedobookssdksampleapp.ui.partnerCorrelationId
 import io.wedobooks.sdk.library.wedobookssdksampleapp.ui.StatsScreen
 import io.wedobooks.sdk.library.wedobookssdksampleapp.ui.WdbAudioPlayerSampleScreen
 import io.wedobooks.sdk.library.wedobookssdksampleapp.ui.WdbAudioPlayerScreen
@@ -225,6 +226,7 @@ class MainActivity : ComponentActivity() {
                                 // minimize/finish buttons and pull-down top come from WeDoBooksSdk.configuration (Settings → Book screen)
                                 initialAudioBookProgressMs = null, // only used if internalProgressConfig.player = false
                                 initialReaderCfi = null, // only used if internalProgressConfig.reader = false
+                                partnerCorrelationId = partnerCorrelationId,
                                 viewModelStoreOwner = null, // if you want to save state outside this composable
                                 isDarkMode = isDarkMode,
                                 onError = { error ->
